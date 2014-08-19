@@ -76,6 +76,13 @@ Definition funny_prop1'' := forall n, ev n -> ev (n+4).
 Inductive and (P Q : Prop) : Prop :=
   conj : P -> Q -> (and P Q).
 
+(*
+and_ind :
+  forall P Q P0 : Prop,
+    (P -> Q -> P0) ->
+    and P Q -> P0.
+*)  
+
 (*  Note that, like the definition of [ev] in the previous
     chapter, this definition is parameterized; however, in this case,
     the parameters are themselves propositions, rather than numbers. *)
@@ -204,7 +211,10 @@ Proof.
 Theorem proj2 : forall P Q : Prop,
   P /\ Q -> Q.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q H.
+  inversion H as [_ HQ].
+  apply HQ.
+Qed.
 (** [] *)
 
 Theorem and_commut : forall P Q : Prop,
@@ -251,7 +261,12 @@ Theorem and_assoc : forall P Q R : Prop,
 Proof.
   intros P Q R H.
   inversion H as [HP [HQ HR]].
-(* FILL IN HERE *) Admitted.
+  split.   (* apply conj. *)
+    split. (* apply conj. *)
+      apply HP.
+      apply HQ.
+      apply HR.
+Qed.
 (** [] *)
 
 (** **** 練習問題: ★★, recommended (even_ev) *)
@@ -276,14 +291,37 @@ Theorem even_ev : forall n : nat,
   (even n -> ev n) /\ (even (S n) -> ev (S n)).
 Proof.
   (* ヒント: nに帰納法を使います. *)
-  (* FILL IN HERE *) Admitted.
+  intros n.
+  unfold even.
+  induction n as [| n'].
+    simpl.
+    apply conj.
+    intros H.
+    apply ev_0.
+    intros H.
+    inversion H.
+    destruct IHn'.
+    apply conj.
+    apply H0.
+    simpl.
+    intros H1.
+    apply ev_SS.
+    apply H.
+    apply H1.
+Qed.
 (** [] *)
 
 (** **** 練習問題: ★★ *)
 (** 次の命題の証明を示すオブジェクトを作成しなさい。 *)
 
 Definition conj_fact : forall P Q R, P /\ Q -> Q /\ R -> P /\ R :=
-  (* FILL IN HERE *) admit.
+  fun (P Q R : Prop) (P0 : P /\ Q) (P1 : Q /\ R) =>
+    match P0 with
+    | conj HP _ =>
+        match P1 with
+        | conj _ HR => conj P R HP HR (* パラメータP QとインデックスHP HR *)
+        end
+    end.
 (** [] *)
 
 (** ** Iff （両含意）*)
@@ -326,12 +364,30 @@ Proof.
 Theorem iff_refl : forall P : Prop,
   P <-> P.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P.
+  split.
+  intros P1.  
+  apply P1.
+  intros P2.
+  apply P2.
+Qed.
 
 Theorem iff_trans : forall P Q R : Prop,
   (P <-> Q) -> (Q <-> R) -> (P <-> R).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q R H1 H2.
+  inversion H1 as [HPQ HQP].
+  inversion H2 as [HQR HRQ].
+  split.
+    intros P1.
+    apply HQR.
+    apply HPQ.
+    apply P1.
+    intros R1.
+    apply HQP.
+    apply HRQ.
+    apply R1.
+Qed.
 
 (*  Hint: If you have an iff hypothesis in the context, you can use
     [inversion] to break it into two separate implications.  (Think
@@ -353,12 +409,21 @@ Proof.
     ことを見てきました。
     次の [MyProp n <-> ev n] が任意の [n]で成り立つことを証明しなさい。
     お遊びのつもりでかまわないので、その証明を、単純明快な証明、タクティックを
-    使わないような証明に書き換えてください。（ヒント：以前に使用した定理をうまく
+    使わないにような証明に書き換えてください。（ヒント：以前に使用した定理をうまく
     使えば、１行だけでかけるはずです！）
  *)
 
-Definition MyProp_iff_ev : forall n, MyProp n <-> ev n :=
-  (* FILL IN HERE *) admit.
+Theorem MyProp_iff_ev : forall n,
+  MyProp n <-> ev n.
+Proof.
+  intros n. split. apply ev_MyProp. apply MyProp_ev.
+Qed.
+
+Definition MyProp_iff_ev' : forall n, MyProp n <-> ev n :=
+  fun n =>
+    conj (MyProp n -> ev n) (ev n -> MyProp n) (ev_MyProp n) (MyProp_ev n).
+(*       ^ Type             ^ Type             *)
+
 (** [] *)
 
 (*  Some of Coq's tactics treat [iff] statements specially, thus
@@ -381,6 +446,16 @@ Inductive or (P Q : Prop) : Prop :=
   | or_introl : P -> or P Q
   | or_intror : Q -> or P Q.
 
+(*
+or_ind :
+  forall (P Q P0 : Prop)),
+    (P -> P0) ->
+    (Q -> P0) ->
+    or P Q -> P0.
+*)
+
+Check or_ind.
+
 Notation "P \/ Q" := (or P Q) : type_scope.
 
 (* Consider the "type" of the constructor [or_introl]: *)
@@ -390,10 +465,10 @@ Check or_introl.
 (* ===>  forall P Q : Prop, P -> P \/ Q *)
 
 (*  It takes 3 inputs, namely the propositions [P],[Q] and
-    evidence of [P], and returns as output, the evidence of [P /\ Q].
+    evidence of [P], and returns as output, the evidence of [P \/ Q].
     Next, look at the type of [or_intror]: *)
 (** このコンストラクタは三つの入力（ [P]、[Q] と名付けられた
-    命題に加え、[P] の根拠）を引数にとり、[P /\ Q] の根拠を返します。
+    命題に加え、[P] の根拠）を引数にとり、[P \/ Q] の根拠を返します。
     次に、[or_intror] の型を見てみましょう。 *)
 
 Check or_intror.
@@ -458,7 +533,12 @@ Proof.
     見てみたりしないこと。）
  *)
 
-(* FILL IN HERE *)
+Definition or_commut'' : forall (P Q : Prop), P \/ Q -> Q \/ P :=
+  fun P Q H =>
+    match H with
+    | or_introl HP => or_intror Q P HP
+    | or_intror HQ => or_introl Q P HQ
+    end.
 (** [] *)
 
 Theorem or_distributes_over_and_1 : forall P Q R : Prop,
@@ -472,12 +552,73 @@ Proof.
       SCase "left". right. apply HQ.
       SCase "right". right. apply HR.  Qed.
 
+Definition or_distributes_over_and_1' : forall (P Q R : Prop),
+  P \/ (Q /\ R) -> (P \/ Q) /\ (P \/ R) :=
+    fun P Q R H =>
+      match H with
+      | or_introl HP =>
+          conj (P \/ Q) (P \/ R) (or_introl P Q HP) (or_introl P R HP)
+      | or_intror HQR =>
+          match HQR with
+          | conj HQ HR =>
+              conj (P \/ Q) (P \/ R) (or_intror P Q HQ) (or_intror P R HR)
+          end
+      end.
+
+(* and_ind : forall P Q P0 : Prop, (P -> Q -> P0) -> and P Q -> P0. *)
+
 (*  **** Exercise: 2 stars, recommended (or_distributes_over_and_2) *)
 (** **** 練習問題: ★★, recommended (or_distributes_over_and_2) *)
 Theorem or_distributes_over_and_2 : forall P Q R : Prop,
   (P \/ Q) /\ (P \/ R) -> P \/ (Q /\ R).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q R. intros H.
+  inversion H as [ [HP0 | HQ] [HP1 | HR] ].
+  left. apply HP0. (* HP0 HP1, P *)
+  left. apply HP0. (* HP0 HR,  P *)
+  left. apply HP1. (* HQ  HP1, P *)
+  right. split.    (* HQ  HR,  Q /\ R *)
+    apply HQ.      (* HQ  HR,  Q *)
+    apply HR.      (* HQ  HR,  R *) 
+Qed.
+
+Definition or_distributes_over_and_2' : forall (P Q R : Prop),
+  (P \/ Q) /\ (P \/ R) -> P \/ (Q /\ R) :=
+    fun P Q R H =>
+      match H with
+      | conj HPQ HPR' =>
+          match HPQ with
+          | or_introl HP0 =>
+              fun HPR : P \/ R =>
+                match HPR with
+                | or_introl HP1 => or_introl P (Q /\ R) HP0
+                | or_intror HR  => or_introl P (Q /\ R) HP0
+                end
+              (* fun _ : P \/ R => or_introl P (Q /\ R) HP0 *)
+          | or_intror HQ =>
+              fun HPR : P \/ R =>
+                match HPR with
+                | or_introl HP1 => or_introl P (Q /\ R) HP1
+                | or_intror HR  => or_intror P (Q /\ R) (conj Q R HQ HR)
+                end
+          end HPR'
+       end.
+
+Definition or_distributes_over_and_2'' : forall (P Q R : Prop),
+  (P \/ Q) /\ (P \/ R) -> P \/ (Q /\ R) :=
+    fun P Q R H =>
+      match H with
+      | conj HPQ HPR =>
+          match HPQ with
+          | or_introl HP0 => or_introl P (Q /\ R) HP0
+          | or_intror HQ =>
+              match HPR with
+              | or_introl HP1 => or_introl P (Q /\ R) HP1
+              | or_intror HR  => or_intror P (Q /\ R) (conj Q R HQ HR)
+              end
+          end
+       end.
+
 (** [] *)
 
 (*  **** Exercise: 1 star (or_distributes_over_and) *)
@@ -485,7 +626,20 @@ Proof.
 Theorem or_distributes_over_and : forall P Q R : Prop,
   P \/ (Q /\ R) <-> (P \/ Q) /\ (P \/ R).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q R.
+  split.
+    apply or_distributes_over_and_1'.
+    apply or_distributes_over_and_2''.
+Qed.
+
+Definition or_distributes_over_and' : forall P Q R,
+  P \/ (Q /\ R) <-> (P \/ Q) /\ (P \/ R) :=
+  fun P Q R =>
+    conj (P \/ (Q /\ R) -> (P \/ Q) /\ (P \/ R))
+         ((P \/ Q) /\ (P \/ R) -> P \/ (Q /\ R))
+         (or_distributes_over_and_1' P Q R)
+         (or_distributes_over_and_2' P Q R).
+      
 (** [] *)
 
 (* ################################################### *)
@@ -533,17 +687,130 @@ Proof.
 Theorem andb_false : forall b c,
   andb b c = false -> b = false \/ c = false.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b c H.
+  unfold andb in H.
+  destruct b.
+    right. apply H.
+    left. reflexivity.
+Qed.
+
+Definition andb_false' : forall b c,
+  andb b c = false -> b = false \/ c = false :=
+  fun b c H =>
+    match
+      b
+      return
+      (match b with
+       | true => c
+       | false => false
+       end = false -> b = false \/ c = false)
+    with
+    | true => fun H0 : c = false => or_intror (true = false) (c = false) H0
+    | false => fun _ : false = false => or_introl (false = false) (c = false) eq_refl
+    end H.
 
 Theorem orb_true : forall b c,
   orb b c = true -> b = true \/ c = true.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b c H.
+  destruct b.
+    left. reflexivity.
+    right. simpl in H. apply H.
+Qed.
+
+Definition orb_true' : forall b c,
+  orb b c = true -> b = true \/ c = true :=
+  fun b c H =>
+    match b as b0 return (orb b0 c = true -> b0 = true \/ c = true) with
+    | true => fun _ : orb true c = true => or_introl (true = true) (c = true) eq_refl
+    | false => fun H0 : orb false c = true => or_intror (false = true) (c = true) H0
+    end H.
+
+Theorem false_eq : forall b c : bool,
+  true = false -> b = c.
+Proof.
+  intros b c H.
+  inversion H.
+Qed.
+
+Variables (A : Type) (x y z : A).
+
+Definition eq_transitive3 : x = y -> y = z -> x = z :=
+  fun xey yez => match yez in (_ = t) return (x = t) with
+                            | refl_equal => xey
+                          end.
+
+Definition false_eq' : forall b c : bool,
+  true = false -> b = c :=
+  fun b c H =>
+    False_ind (b = c)
+      ((fun (A : Type) (x : A) (P : A -> Type) (f : P x) (y : A) (e : x = y) =>
+         match e in (_ = y0) return (P y0) with
+         (* x = y が Trueの場合のパターン *)
+         | eq_refl => f
+         (* x = y が Falseの場合のパターンはなし *)
+         end)
+         bool  (* A : Type *)
+         true  (* x : A *)
+         (fun e : bool => if e then True else False) (* P : A -> Type *)
+         I     (* f : P x *)
+         false (* y : A *)
+         H     (* e : x = y *)
+         ).
+
+(*
+Definition false_eq' : forall b c : bool,
+  true = false -> b = c :=
+  fun b c H =>
+    False_ind (b = c)
+      ((fun (A : Type) (x : A) (P : A -> Type) (f : P x) (y : A) (e : x = y) =>
+         match e in (_ = y0) return (P y0) with
+         (* x = y が Trueの場合のパターン *)
+         | eq_refl => f
+         (* x = y が Falseの場合のパターンはなし *)
+         end) bool true (fun e : bool => if e then Treu else False) I false H).
+
+(* False_indは空のパターンマッチしか持たないのでGoalが分岐しない *)
+*)
 
 Theorem orb_false : forall b c,
   orb b c = false -> b = false /\ c = false.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros b c H.
+  destruct b.
+    simpl in H. inversion H.
+    simpl in H. split.
+      reflexivity.
+      apply H.
+Qed.
+
+Definition orb_false' : forall b c,
+  orb b c = false -> b = false /\ c = false :=
+  fun b c H =>
+    match b as b0 return (orb b0 c = false -> b0 = false /\ c = false) with
+    | true => fun H0 : orb true c = false =>
+        False_ind (true = false /\ c = false)
+          ((fun (A : Type) (x : A) (P : A -> Type)
+                (f : P x) (y : A) (e : x = y) =>
+              match e in (_ = y0) return (P y0) with
+              | eq_refl => f
+              end)
+           bool true (fun e : bool => if e then True else False) I false H0)
+    | false => fun H0 : orb false c = false =>
+                 conj (false = false) (c = false) eq_refl H0
+    end H.
+
+Definition orb_false'' : forall b c,
+  orb b c = false -> b = false /\ c = false :=
+  fun b c H =>
+    match b as b0 return (orb b0 c = false -> b0 = false /\ c = false) with
+    | true => fun H0 : orb true c = false =>
+        False_ind (true = false /\ c = false)
+          (eq_ind true (fun e : bool => if e then True else False) I false H0)
+    | false => fun H0 : orb false c = false =>
+                 conj (false = false) (c = false) eq_refl H0
+    end H.
+
 (** [] *)
 
 (* ################################################### *)
@@ -560,6 +827,13 @@ Inductive False : Prop := .
 (*  Intuition: [False] is a proposition for which there is no way
     to give evidence. *)
 (** 直観的な理解: [False] は、根拠を示す方法を一つも持たない命題 *)
+
+(* Falseは値を一つも持たない *)
+
+Definition False_ind' : forall P : Prop, False -> P :=
+  fun (P : Prop) (f : False) =>
+    match f return P with
+    end.
 
 (*  **** Exercise: 1 star (False_ind_principle) *)
 (** **** 練習問題: ★ (False_ind_principle) *)
@@ -583,6 +857,10 @@ Proof.
   intros contra.
   inversion contra.  Qed.
 
+Definition Flase_implies_nonsense' : False -> 2 + 2 = 5 :=
+  fun (H : False) =>
+    False_ind' (2 + 2 = 5) H.
+
 (*  How does this work? The [inversion] tactic breaks [contra] into
     each of its possible cases, and yields a subgoal for each case.
     As [contra] is evidence for [False], it has _no_ possible cases,
@@ -605,6 +883,16 @@ Proof.
   intros contra.
   inversion contra.  Qed.
 
+Definition nonsense_implies_False' : 2 + 2 = 5 -> False :=
+  fun (H : 2 + 2 = 5) =>
+    ((fun (A : Type) (x : A) (P : A -> Type) (f : P x) (y : A) (e : x = y) =>
+      match e in (_ = y0) return (P y0) with
+      | eq_refl => f
+      end) nat (2 + 2) (fun e : nat => match e with
+                                       | 4 => True 
+                                       | _ => False
+                                       end) I 5 H).
+
 (*  Actually, since the proof of [False_implies_nonsense]
     doesn't actually have anything to do with the specific nonsensical
     thing being proved; it can easily be generalized to work for an
@@ -617,6 +905,10 @@ Theorem ex_falso_quodlibet : forall (P:Prop),
 Proof.
   intros P contra.
   inversion contra.  Qed.
+
+Definition ex_falso_quodlibet' : forall (P : Prop), False -> P :=
+  fun (P : Prop) (H : False) =>
+    False_ind' P H.
 
 (*  The Latin _ex falso quodlibet_ means, literally, "from
     falsehood follows whatever you please."  This theorem is also
@@ -649,6 +941,8 @@ Proof.
     根拠を示される命題であるべきです。代わりに、帰納的原理から帰納的な定義を逆に
     たどっていくほうが近道だと気づくかもしれません。）
  *)
+
+Inductive True : Prop := I.
 
 (* FILL IN HERE *)
 (** [] *)
@@ -700,6 +994,9 @@ Theorem not_False :
 Proof.
   unfold not. intros H. inversion H.  Qed.
 
+Definition not_False' : ~ False :=
+  fun H : False => False_ind' False H.
+
 Theorem contradiction_implies_anything : forall P Q : Prop,
   (P /\ ~P) -> Q.
 Proof.
@@ -707,11 +1004,24 @@ Proof.
   intros P Q H. inversion H as [HP HNA]. unfold not in HNA.
   apply HNA in HP. inversion HP.  Qed.
 
+Definition contradiction_implies_anything' : forall P Q : Prop,
+  (P /\ ~P) -> Q :=
+  fun (P Q : Prop) (H : P /\ ~P) =>
+    False_ind' Q (match H with
+                  | conj HP HNA => HNA HP
+                  end).
+
 Theorem double_neg : forall P : Prop,
   P -> ~~P.
 Proof.
   (* WORKED IN CLASS *)
   intros P H. unfold not. intros G. apply G. apply H.  Qed.
+
+Definition double_neg' : forall P : Prop, P -> ~~P :=
+  (fun (P : Prop) (H : P) => fun G : P -> False => G H)
+    : forall P : Prop, P -> ((P -> False) -> False).
+
+(* ~~P = not (not P) : (P -> False) -> False *)
 
 (*  **** Exercise: 2 stars, recommended (double_neg_inf) *)
 (** **** 練習問題: ★★, recommended (double_neg_inf) *)
@@ -729,7 +1039,9 @@ Proof.
    _Theorem_: [P] implies [~~P], for any proposition [P].
 
    _Proof_:
-(* FILL IN HERE *)
+
+「P」を真とすると、「Pが偽」(~P) は偽である。
+言い換えると「P」が真ならば「「Pは偽」は偽」(~~P)は真である。
    [] *)
 
 (*  **** Exercise: 2 stars, recommended (contrapositive) *)
@@ -737,16 +1049,46 @@ Proof.
 Theorem contrapositive : forall P Q : Prop,
   (P -> Q) -> (~Q -> ~P).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P Q H.
+  unfold not.
+  intros H0.
+  intros H1.
+  apply H in H1.
+  apply H0 in H1.
+  apply H1.
+Qed.
 (** [] *)
+
+Definition contrapositive' : forall P Q : Prop,
+  (P -> Q) -> (~Q -> ~P) :=
+  fun (P Q : Prop) (H : P -> Q) =>
+    fun (H0 : Q -> False) =>
+      fun (H1 : P) => H0 (H H1).
+
+(*
+(~Q -> ~P) = (not Q) -> (not P) = (Q -> False) -> P -> False
+*)
 
 (*  **** Exercise: 1 star (not_both_true_and_false) *)
 (** **** 練習問題: ★ (not_both_true_and_false) *)
 Theorem not_both_true_and_false : forall P : Prop,
   ~ (P /\ ~P).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros P.
+  unfold not.
+  intros H.
+  inversion H.
+  apply H1 in H0.
+  apply H0.
+Qed.
 (** [] *)
+
+Definition not_both_true_and_false' : forall P : Prop,
+  ~ (P /\ ~P) :=
+  fun (P : Prop) (H : P /\ ~P) =>
+    match H with
+    | conj p np => np p
+    end.
 
 Theorem five_not_even :
   ~ ev 5.
@@ -754,6 +1096,90 @@ Proof.
   (* WORKED IN CLASS *)
   unfold not. intros Hev5. inversion Hev5 as [|n Hev3 Heqn].
   inversion Hev3 as [|n' Hev1 Heqn']. inversion Hev1.  Qed.
+
+Theorem one_not_even :
+  ~ ev 1.
+Proof.
+  unfold not. intros Hev1. inversion Hev1.
+Qed.
+
+Definition one_not_even' : ~ ev 1 :=
+  fun (Hev1 : ev 1) =>
+    (fun H : 1 = 1 -> False => H eq_refl)
+      match Hev1 in (ev n1) return (n1 = 1 -> False) with
+      | ev_0 =>
+          fun H1 : 0 = 1 =>
+            eq_ind 0 (fun e : nat => match e with
+                                     | 0 => True
+                                     | S _ => False
+                                     end) I 1 H1
+      | ev_SS n2 Hev2 =>
+          fun H2 : S (S n2) = 1 =>
+            eq_ind (S (S n2)) (fun e : nat => match e with
+                                              | 0 => False
+                                              | 1 => False
+                                              | S (S _) => True
+                                              end) I 1 H2
+      end.
+
+Definition five_not_even' : ~ ev 5 :=
+  fun (Hev5 : ev 5) =>
+    (fun (P : nat -> Prop)                                       (* evの帰納法の原理*)
+         (f : P 0)
+         (f0 : forall n : nat, ev n -> P n -> P (S (S n))) =>
+            fix F (n : nat) (e : ev n) {struct e} : P n :=       (* eについて減少 *)
+              match e in (ev n0) return (P n0) with
+              | ev_0 => f
+              | ev_SS n1 ev1 => f0 n1 ev1 (F n1 ev1)
+              end)
+    (fun n : nat => ev (S n) -> False)                           (* 帰納法の仮定 *)
+    (fun ev1 : ev 1 =>                                           (* 基底 *)
+      (fun H : 1 = 1 -> False => H eq_refl)
+      match ev1 in (ev n0) return (n0 = 1 -> False) with
+      | ev_0 =>
+          fun H1 : 0 = 1 =>
+            eq_ind 0 (fun n1 : nat => match n1 with
+                                     | 0 => True
+                                     | S _ => False
+                                     end) I 1 H1
+      | ev_SS n2 Hev2 =>
+          fun H2 : S (S n2) = 1 =>
+            eq_ind (S (S n2)) (fun n3 : nat => match n3 with
+                                               | 0 => False
+                                               | 1 => False
+                                               | S (S _) => True
+                                               end) I 1 H2
+      end
+    )
+    (fun (n : nat) (e : ev n) (IHev : ev (S n) -> False) =>      (* 帰納 *)
+       fun evn : ev (S (S (S n))) =>
+         (fun H : S (S (S n)) = S (S (S n)) -> False => H eq_refl)
+         match evn in (ev n0) return (n0 = S (S (S n)) -> False) with
+         | ev_0 =>
+             fun H1 : 0 = S (S (S n)) =>
+               eq_ind 0 (fun n1 : nat => match n1 with
+                                         | 0 => True
+                                         | S _ => False
+                                         end) I (S (S (S n))) H1
+         | ev_SS n2 Hev2 =>
+             fun H2 : S (S n2) = S (S (S n)) =>
+               (fun H3 : n2 = S n => (* 帰納法の仮定と一致のためコンストラクタを削る *)
+                  eq_ind 
+                  (S n)                                          (* x : A *)
+                  (fun n3 : nat => ev n3 -> False)               (* P : A -> Prop *)
+                  (fun H4 : ev (S n) => IHev H4)                 (* f : P x *)
+                  n2                                             (* y : A *)
+                  (eq_sym H3) (* H3とはx, yの順が逆だから*)      (* e : x = y *)
+               )
+               (f_equal (fun e : nat => match e : nat with
+                                        | 0 => n2
+                                        | 1 => n2
+                                        | S (S n4) => n4
+                                        end) H2) (* コンストラクタ削るのに使う *)
+               Hev2
+         end
+    )
+    4 (ev_SS 2 (ev_SS 0 ev_0)) Hev5.
 
 (*  **** Exercise: 1 star ev_not_ev_S *)
 (** **** 練習問題: ★ ev_not_ev_S *)
@@ -766,8 +1192,63 @@ Theorem ev_not_ev_S : forall n,
   ev n -> ~ ev (S n).
 Proof.
   unfold not. intros n H. induction H. (* not n! *)
-  (* FILL IN HERE *) Admitted.
+  intros ev1. inversion ev1.
+  intros ev3. inversion ev3. apply IHev in H1. apply H1.
+Qed.
 (** [] *)
+
+Definition ev_not_ev_S' : forall n, ev n -> ~ ev (S n) :=
+  fun (n : nat) (H : ev n) =>
+    ev_ind
+      (fun n0 : nat => ev (S n0) -> False)                   (* P : n -> Prop *)
+      (fun ev0 : ev 1 =>                                     (* f : P 0 *)
+         (fun H0 : 1 = 1 -> False => H0 eq_refl)
+         match ev0 in (ev n0) return (n0 = 1 -> False) with
+         | ev_0 =>
+             fun H1 : 0 = 1 =>
+               eq_ind 0 (fun n1 : nat => match n1 with
+                                         | 0 => True
+                                         | S _ => False
+                                         end) I 1 H1
+         | ev_SS n2 Hev2 =>
+            fun H2 : S (S n2) = 1 =>
+               eq_ind (S (S n2)) (fun n3 : nat => match n3 with
+                                                  | 0 => False
+                                                  | 1 => False
+                                                  | S (S _) => True
+                                                  end) I 1 H2
+         end
+      )
+      (fun (n0 : nat) (e : ev n0) (IHev : ev (S n0) -> False) =>
+         fun evn : ev (S (S (S n0))) =>
+           (fun H0 : S (S (S n0)) = S (S (S n0)) -> False => H0 eq_refl)
+           match evn in (ev n1) return (n1 = S (S (S n0)) -> False) with
+           | ev_0 =>
+               fun H1 : 0 = S (S (S n0)) =>
+                 eq_ind 0 (fun n2 : nat => match n2 with
+                                           | 0 => True
+                                           | S _ => False
+                                           end) I (S (S (S n0))) H1
+           | ev_SS n3 Hev2 =>
+               fun H2 : S (S n3) = S (S (S n0)) =>
+                 (fun H3 : n3 = S n0 =>
+                   eq_ind
+                   (S n0)
+                   (fun n4 : nat => ev n4 -> False)
+                   (fun H4 : ev (S n0) => IHev H4)
+                   n3
+                   (eq_sym H3)
+                 )
+                 (f_equal (fun n5 : nat => match n5 with
+                                           | 0 => n3
+                                           | 1 => n3
+                                           | S (S n6) => n6
+                                          end) H2)
+                 Hev2
+           end
+       )
+       n H.
+   
 
 (*  **** Exercise: 1 star (informal_not_PNP) *)
 (** **** 練習問題: ★ (informal_not_PNP) *)
@@ -859,22 +1340,191 @@ Proof.
     apply ex_falso_quodlibet.
     apply H. reflexivity.   Qed.
 
+Definition not_false_then_true' : forall b : bool,
+  b <> false -> b = true :=
+  fun (b : bool) (H : b = false -> False) =>
+    match b return ((b = false -> False) -> b = true) with
+    | true  => fun _  : true  = false -> False => eq_refl
+    | false => fun H0 : false = false -> False => False_ind' (false = true) (H0 eq_refl)
+    end H.
+
 (*  **** Exercise: 2 stars, recommended (not_eq_beq_false) *)
 (** **** 練習問題: ★★, recommended (not_eq_beq_false) *)
+Lemma not_eq_dec : forall n m : nat,
+    S n <> S m -> n <> m.
+Proof.
+  intros n m H eq.
+  apply H.
+  rewrite <- eq.
+  reflexivity.
+Qed. 
+
 Theorem not_eq_beq_false : forall n n' : nat,
      n <> n' ->
      beq_nat n n' = false.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m.
+  generalize dependent n.
+  induction m as [| m'].
+    destruct n as [| n'].
+      intros H.
+      simpl.
+      apply ex_falso_quodlibet.
+      apply H.
+      reflexivity.
+      intros H.
+      reflexivity.
+    destruct n as [| n'].
+      intros H.
+      reflexivity.
+      intros H.
+      simpl.
+      apply IHm'.
+      apply not_eq_dec.
+      exact H.
+Qed.    
+      
 (** [] *)
+
+Definition not_eq_beq_false' : forall n n' : nat,
+  n <> n' -> beq_nat n n' = false :=
+  fun n m =>
+    nat_ind
+    (fun m0 : nat => forall n0 : nat, n0 <> m0 -> beq_nat n0 m0 = false)
+    (fun n0 : nat =>
+       match n0 return (n0 <> 0 -> beq_nat n0 0 = false) with
+       | 0    => fun H : 0    <> 0 => False_ind' (true = false) (H eq_refl)
+       | S n' => fun _ : S n' <> 0 => eq_refl
+       end
+    )
+    (fun (m' : nat) (IHm' : forall n0 : nat, n0 <> m' -> beq_nat n0 m' = false) (n0 : nat) =>
+       match n0 return (n0 <> S m' -> beq_nat n0 (S m') = false) with
+       | 0    => fun _ :   0  <> S m' => eq_refl
+       | S n' => fun H : S n' <> S m' =>
+           IHm' n'
+           ((fun n2 m2 H2 eq2 => H2 (eq_ind n2 (fun m2' => S n2 = S m2') eq_refl m2 eq2))
+            n' m' H)
+       end
+    ) m n.
 
 (*  **** Exercise: 2 stars, optional (beq_false_not_eq) *)
 (** **** 練習問題: ★★, optional (beq_false_not_eq) *)
+Lemma beq_not_nat_inc : forall n m,
+  n <> m -> S n <> S m.
+Proof.
+  intros n m H eq. apply H. inversion eq. reflexivity.
+Qed.
+
 Theorem beq_false_not_eq : forall n m,
   false = beq_nat n m -> n <> m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m. generalize dependent n.
+  induction m as [|m'].
+  Case "m = 0".
+    simpl. destruct n as [|n'].
+    SCase "n = 0".
+      intros H. inversion H.
+    SCase "n = S n'".
+      intros H eq. inversion eq. destruct n. simpl. intros H eq. inversion eq.
+  Case "m = S m'".
+    destruct n as [|n'].
+    SCase "n = 0".
+      destruct m' as [|m''].
+      SSCase "m' = 0".
+        simpl. intros H. inversion H.
+      SSCase "m' = S m''".
+        simpl. intros H. intros eq. inversion eq.
+    SCase "n = S n'".
+      intros eq. apply beq_not_nat_inc. apply IHm'. exact eq.
+Qed.
 (** [] *)
+
+Definition beq_false_not_eq_m_eq_0 : forall n,
+  false = beq_nat n 0 -> n <> 0 :=
+  fun n =>
+    match n return (false = beq_nat n 0 -> n <> 0) with
+    | 0 =>
+        fun H : false = beq_nat 0 0 =>
+            False_ind'
+            (0 <> 0)
+            (eq_ind false (fun e : bool => match e with
+                                           | true => False
+                                           | false => True
+                                           end) I (beq_nat 0 0) H)
+    | S n0 =>
+        fun (H : false = beq_nat (S n0) 0) (eq : S n0 = 0) =>
+            eq_ind (S n0) (fun e : nat => match e with
+                                          | 0 => False
+                                          | S _ => True
+                                          end) I 0 eq
+    end.
+
+Definition beq_false_not_eq_m_eq_Sm : forall m : nat,
+  (forall n0 : nat, false = beq_nat n0 m -> n0 <> m) ->
+  forall n1 : nat, false = beq_nat n1 (S m) -> n1 <> S m :=
+  fun m IHm n1 =>
+    match n1 return (false = beq_nat n1 (S m) -> n1 <> S m) with
+    | 0 =>
+        fun (H : false = beq_nat 0 (S m)) (eq : 0 = S m) =>
+          eq_ind 0 (fun e : nat => match e with
+                                   | 0 => True
+                                   | S _ => False
+                                   end) I (S m) eq
+    | S n1' =>
+        fun (H : false = beq_nat (S n1') (S m)) (eq : S n1' = S m) =>
+          IHm n1' H (f_equal (fun e : nat => match e with
+                                             | 0 => n1'
+                                             | S n2 => n2
+                                             end) eq)
+    end.
+
+Definition beq_false_not_eq' : forall n m,
+  false = beq_nat n m -> n <> m :=
+  fun n m =>
+    nat_ind
+    (fun m0 : nat => forall n0 : nat, false = beq_nat n0 m0 -> n0 <> m0)
+    beq_false_not_eq_m_eq_0
+    beq_false_not_eq_m_eq_Sm
+    m n.
+
+Definition beq_false_not_eq'' : forall n m,
+  false = beq_nat n m -> n <> m :=
+  fun n m =>
+    nat_ind
+    (fun m0 : nat => forall n0 : nat, false = beq_nat n0 m0 -> n0 <> m0)
+    (fun n1 =>
+    match n1 return (false = beq_nat n1 0 -> n1 <> 0) with
+    | 0 =>
+        fun H : false = beq_nat 0 0 =>
+            False_ind'
+            (0 <> 0)
+            (eq_ind false (fun e : bool => match e with
+                                           | true => False
+                                           | false => True
+                                           end) I (beq_nat 0 0) H)
+    | S n2 =>
+        fun (H : false = beq_nat (S n2) 0) (eq : S n2 = 0) =>
+            eq_ind (S n2) (fun e : nat => match e with
+                                          | 0 => False
+                                          | S _ => True
+                                          end) I 0 eq
+    end)
+    (fun m' IHm n1 =>
+    match n1 return (false = beq_nat n1 (S m') -> n1 <> S m') with
+    | 0 =>
+        fun (H : false = beq_nat 0 (S m')) (eq : 0 = S m') =>
+          eq_ind 0 (fun e : nat => match e with
+                                   | 0 => True
+                                   | S _ => False
+                                   end) I (S m') eq
+    | S n1' =>
+        fun (H : false = beq_nat (S n1') (S m')) (eq : S n1' = S m') =>
+          IHm n1' H (f_equal (fun e : nat => match e with
+                                             | 0 => n1'
+                                             | S n2 => n2
+                                             end) eq)
+    end) m n.   
+    
 
 (* ############################################################ *)
 (*  * Existential Quantification *)
@@ -918,7 +1568,7 @@ Definition some_nat_is_even : Prop :=
  *)
 
 Definition snie : some_nat_is_even :=
-  ex_intro _ ev 4 (ev_SS 2 (ev_SS 0 ev_0)).
+  ex_intro _ ev 4 (ev_SS 2 (ev_SS 0 ev_0)). 
 
 (*  Coq's notation definition facility can be used to introduce
     more familiar notation for writing existentially quantified
@@ -1010,13 +1660,13 @@ Proof.
 ]]
  *)
 
-(* FILL IN HERE *)
+(* ev (S n) is satified with n as some value of nat. *)
 
 (*  Complete the definition of the following proof object: *)
 (** 次の証明オブジェクトの定義を完成させなさい *)
 
 Definition p : ex nat (fun n => ev (S n)) :=
-(* FILL IN HERE *) admit.
+  ex_intro nat (fun n => ev (S n)) 1 (ev_SS 0 ev_0).
 (** [] *)
 
 (*  **** Exercise: 1 star (dist_not_exists) *)
@@ -1029,23 +1679,50 @@ Definition p : ex nat (fun n => ev (S n)) :=
 Theorem dist_not_exists : forall (X:Type) (P : X -> Prop),
   (forall x, P x) -> ~ (exists x, ~ P x).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X P PH NH.
+  inversion NH as [x NP].
+  apply NP.
+  apply PH.
+Qed.
+
+Definition dist_not_exists' : forall (X:Type) (P : X -> Prop),
+  (forall x, P x) -> ~ (exists x, ~ P x) :=
+  fun (X : Type) (P : X -> Prop) (PH : (forall x : X, P x)) (NH : (exists x, ~ P x)) =>
+    match NH with
+    | ex_intro x NP => NP (PH x)
+    end.
+    
 (** [] *)
 
 (*  **** Exercise: 3 stars, optional (not_exists_dist) *)
 (** **** 練習問題: ★★★, optional (not_exists_dist) *)
 (*  The other direction requires the classical "law of the excluded
     middle": *)
-(** 反対の向きは、古典論理の「排中律（law of the excluded middle）」が
-    必要です。 *)
+(** 一方、古典論理の「排中律（law of the excluded middle）」が必要とされる
+    場合もあります。 *)
 
 Theorem not_exists_dist :
-  excluded_middle ->
-  forall (X:Type) (P : X -> Prop),
+  excluded_middle -> forall (X:Type) (P : X -> Prop),
     ~ (exists x, ~ P x) -> (forall x, P x).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros em X P NPH x.
+  destruct (em (P x)) as [p | np].
+  exact p.
+  apply ex_falso_quodlibet.
+  apply NPH.
+  exists x.
+  exact np.
+Qed.
 (** [] *)
+
+Definition not_exists_dist' : excluded_middle -> forall (X : Type) (P : X -> Prop),
+  ~ (exists x, ~ P x) -> (forall x, P x) :=
+  fun em X P NPH x =>
+    match em (P x) with
+    | or_introl p => p
+    | or_intror np => False_ind' (P x) (NPH (ex_intro X (fun x => ~ (P x)) x np))
+   end.
+
 
 (*  **** Exercise: 2 stars (dist_exists_or) *)
 (** **** 練習問題: ★★ (dist_exists_or) *)
@@ -1056,8 +1733,43 @@ Proof.
 Theorem dist_exists_or : forall (X:Type) (P Q : X -> Prop),
   (exists x, P x \/ Q x) <-> (exists x, P x) \/ (exists x, Q x).
 Proof.
-   (* FILL IN HERE *) Admitted.
+   intros X P Q.
+   split.
+   intros H. destruct H as [x pq].
+   inversion pq as [p'|q'].
+   left. exists x. exact p'. right. exists x. exact q'.
+   intros H. inversion H as [p'|q']. destruct p' as [x p'']. exists x. left. exact p''.
+   destruct q' as [x q'']. exists x. right. exact q''.
+Qed.
 (** [] *)
+
+Definition dist_exists_or1 : forall (X : Type) (P Q : X -> Prop),
+  (* (exists x, P x \/ Q x) -> (exists x, P x) \/ (exists x, Q x) := *)
+  ex X (fun x => P x \/ Q x) -> ex X P \/ ex X Q :=
+  fun X P Q H =>
+    match H with
+    | ex_intro x pq =>
+        match pq with
+        | or_introl p => or_introl (ex X P) (ex X Q) (ex_intro X P x p)
+        | or_intror q => or_intror (ex X P) (ex X Q) (ex_intro X Q x q)
+        end
+    end.
+
+Definition dist_exists_or2 : forall (X : Type) (P Q : X -> Prop),
+  ex X P \/ ex X Q -> ex X (fun x => P x \/ Q x) :=
+  fun X P Q H =>
+    match H with
+    | or_introl (ex_intro x p) => ex_intro X (fun x => P x \/ Q x) x (or_introl (P x) (Q x) p)
+    | or_intror (ex_intro x q) => ex_intro X (fun x => P x \/ Q x) x (or_intror (P x) (Q x) q)
+    end.
+
+Definition dist_exists_or' : forall (X : Type) (P Q : X -> Prop),
+  (exists x, P x \/ Q x) <-> (exists x, P x) \/ (exists x, Q x) :=
+  fun X P Q =>
+    conj (ex X (fun x => P x \/ Q x) -> ex X P \/ ex X Q)
+         (ex X P \/ ex X Q -> ex X (fun x => P x \/ Q x))
+         (dist_exists_or1 X P Q)
+         (dist_exists_or2 X P Q).
 
 (* Print dist_exists_or. *)
 
@@ -1113,13 +1825,68 @@ Notation "x =' y" := (eq' _ x y)
 (*  **** Exercise: 3 stars, optional (two_defs_of_eq_coincide) *)
 (** **** 練習問題: ★★★, optional (two_defs_of_eq_coincide) *)
 (*  Verify that the two definitions of equality are equivalent. *)
-(** これら二つの定義が等価であることを確認しなさい。 *)
+(** これら二つの等値性の定義が等価であることを確認しなさい。 *)
 
 Theorem two_defs_of_eq_coincide : forall (X:Type) (x y : X),
   x = y <-> x =' y.
 Proof.
+  intros X x y.
+  split.
+  intros eq.
+  inversion eq as [x' y' eq'].
   (* FILL IN HERE *) Admitted.
 (** [] *)
+
+Theorem two_defs_of_eq_coincide_r' : forall (X:Type) (x y : X),
+  x = y -> x =' y.
+Proof.
+  intros X x y eq.
+  inversion eq as [x' y' eq'].
+  apply refl_equal'.
+Qed.
+
+Definition eq'_sym : forall (X:Type) (x y : X),
+  x =' y -> y =' x :=
+  fun X x y eq =>
+    match eq in (_ =' y0) return (y0 =' x) with
+    | refl_equal' => refl_equal' X x
+    end.
+
+Definition two_defs_of_eq_coincide_r : forall (X:Type) (x y : X),
+  x = y -> x =' y :=
+    fun X x y eq =>
+      (fun H : x =' x -> y =' y -> x =' y => H (refl_equal' X x) (refl_equal' X y))
+      match eq in (y0 = y1) return (y0 =' x -> y1 =' y -> x =' y) with
+      | refl_equal x' =>
+          fun (eq0 : x' =' x) (eq1 : x' =' y) =>
+            (fun eq2 : x' =' x =>
+               eq'_ind
+               X
+               x
+               (fun e : X => e =' y -> x =' y)
+               (fun eq3 : x =' y =>
+                  eq'_ind 
+                  X
+                  y 
+                  (fun e : X => e =' y)
+                  (refl_equal' X y)
+                  x
+                  (eq'_sym X x y eq3)
+               )
+               x'
+               (eq'_sym X x' x  eq2)
+            )
+            eq0
+            eq1
+      end.
+
+    (* fun X x y H => refl_equal' X x y. The expression "refl_equal' X x" of type "x =' x" *)
+
+Definition two_defs_of_eq_coincide' : forall (X:Type) (x y : X),
+  x = y <-> x =' y :=
+  fun X x y eq =>
+    
+
 
 (*  The advantage of the second definition is that the induction
     principle that Coq derives for it is precisely the familiar
@@ -1299,7 +2066,7 @@ Module LeFirstTry.
 (** この定義はかなり直観的なものになります。これは、ある数値がもう一つの
     数値より小さいかまたは等しい、ということを示すには二つの方法があることを
     示しています。一つはそれらが同じ数であるかどうかを確認すること。もう
-    一つは最初の数が、二つ目の数の一つ前の数より小さいかまたは等しい、
+    一つは最初の数が。二つ目の数の一つ前の数より小さいかまたは等しい、
     ということの根拠を得ることです。
  *)
 
@@ -1316,7 +2083,7 @@ End LeFirstTry.
     rather than an argument to each constructor.  This is similar to
     what we did in our second definition of the [eq] relation,
     above. *)
-(** これはこれで [<=] という関係の妥当な定義だと言えます。しかし少し観察してみると
+(** これはこれで [<=] という関係の妥当なな定義だと言えます。しかし少し観察してみると
     定義の左側のに現れる [n] は全て同じだということがわかります。ということは、
     個々のコンストラクタにではなく定義全体に全称量化子を使うことが
     できるということです。このことは先程 [eq] という関係の二番目の定義でやったことと
@@ -1602,7 +2369,7 @@ Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool :=
     [4,3]
 ]]
     課題は、この仕様をCoq の定理の形に書き直し、それを証明することです。
-    （ヒント：まず、一つのリストが二つのリストをマージしたものとなっている、
+    （ヒント：まず、一つのりすとが二つのリストをマージしたものとなっている、
     ということを示す定義を書く必要がありますが、これは帰納的な関係であって、
     [Fixpoint] で書くようなものではありません。）
  *)
@@ -2143,7 +2910,7 @@ Print nat_ind.  Print nat_rect.
     ことに気づいたかもしれません。それは Coq の型チェッカが二つの [match] の
     枝が、実は同じ型 [P n] を返すことを明確にするために必要なものなのですが、
     これは本質的に Haskell の GADT (generalized algebraic datatype) と同じものです。
-    実際、 [F] は依存型（ _dependent_ type ）をしており、その結果の型はその引数に
+    実際、 [F] は依存型（ _dependent_ type ）をしており、その結果の方はその引数に
     依存します。 GADT はこのような単純な依存型を表現する際に使えます。
     
     我々は、 [nat_ind] の証明に使用したこのようなアプローチを、

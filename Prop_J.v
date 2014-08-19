@@ -137,13 +137,15 @@ Check (even 4).
 Check (even 3).
 (* ===> even 3 : Prop *)
 
+Check strange_prop2.
+
 (* The type of [even], [nat->Prop], can be pronounced in three
     ways: (1) "[even] is a _function_ from numbers to
     propositions," (2) "[even] is a _family_ of propositions, indexed
     by a number [n]," or (3) "[even] is a _property_ of numbers."  *)
 (** [even]の型 [nat -> Prop]は3つの意味を持っています。
    (1) "[even]は数から命題への関数である。"
-   (2) "[even]は数[n]でインデックスされた命題の集りである"。
+   (2) "[even]は数[n]でインデックスされた命題の集りである"。 <= コロン:の右側をインデックスという理由
    (3) "[even]は数の性質(_property_)である。" *)
 
 (* Propositions -- including parameterized propositions -- are
@@ -155,11 +157,17 @@ Check (even 3).
 Definition even_n__even_SSn (n:nat) : Prop :=
   (even n) -> (even (S (S n))).
 
+Check even_n__even_SSn.
+Check (even_n__even_SSn 4).
+
 (* We can define them to take multiple arguments... *)
 (** 複数の引数を受け取るように定義することや.. *)
 
 Definition between (n m o: nat) : Prop :=
   andb (ble_nat n o) (ble_nat o m) = true.
+
+Check between.
+Check (between 2 4 4).
 
 (* ... and then partially apply them: *)
 (** ...部分適用もできます。 *)
@@ -191,6 +199,8 @@ Definition true_for_n__true_for_Sn (P:nat->Prop) (n:nat) : Prop :=
 Definition preserved_by_S (P:nat->Prop) : Prop :=
   forall n', P n' -> P (S n').
 
+(* P n' のとき成り立つ性質が P (S n') においても保存されている *)
+
 (* And this one simply claims that a proposition is true for
     all natural numbers: *)
 (** そして次の関数は、すべての自然数について与えられた命題が真であることを述べています。 *)
@@ -211,6 +221,11 @@ Definition our_nat_induction (P:nat->Prop) : Prop :=
      (true_for_zero P) ->
      (preserved_by_S P) ->
      (true_for_all_numbers P).
+
+(* (yuga) このように定義したからといって帰納法を証明したことにはならない。
+   Coqは帰納法を公理として認めているシステム。
+   でも正則帰納法を自分で定義して使ったりできる。
+*)
 
 (* * Evidence *)
 (** * 根拠 *)
@@ -234,7 +249,7 @@ Definition our_nat_induction (P:nat->Prop) : Prop :=
     things would we be willing to accept as evidence that particular
     propositions are true? *)
 (** 次の疑問は"証明とはなにか？"です。
-    すなわち、ある命題が真であるという根拠として使えるものは、どようなものでしょうか？ *)
+    すなわち、ある命題が真であるという根拠として使えるものは、どのようなものでしょうか？ *)
 
 (* ##################################################### *)
 (* ** Inductively Defined Propositions *)
@@ -272,6 +287,8 @@ Inductive good_day : day -> Prop :=
   | gd_sat : good_day saturday
   | gd_sun : good_day sunday.
 
+(* (yuga) 値 saturday と sunday が型に持ち上がっている *)
+
 (* The [Inductive] keyword means exactly the same thing whether
     we are using it to define sets of data values (in the [Type]
     world) or sets of evidence (in the [Prop] world).  Consider the
@@ -295,6 +312,8 @@ Inductive good_day : day -> Prop :=
     - 三行目は [gd_sun] コンストラクタを宣言しています。このコンストラクタは [good_day sunday] という主張の根拠として使えます。
 *)
 
+(* (yuga) 新たに公理を作成したことになる *)
+
 (* That is, we're _defining_ what we mean by days being good by
     saying "Saturday is good, sunday is good, and that's all."  Then
     someone can _prove_ that Sunday is good simply by observing that
@@ -304,6 +323,9 @@ Inductive good_day : day -> Prop :=
 
 Theorem gds : good_day sunday.
 Proof. apply gd_sun. Qed.
+
+Check gd_sun.
+Check (good_day sunday).
 
 (* The constructor [gd_sun] is "primitive evidence" -- an _axiom_ --
     justifying the claim that Sunday is good. *)
@@ -347,6 +369,10 @@ Inductive fine_day_for_singing : day -> Prop :=
     要するに、水曜日は「歌いだしたくなるほど素敵な日」だということです。
 *)
 
+Check day_before.
+Check db_tue.
+Check fine_day_for_singing.
+
 Theorem fdfs_wed : fine_day_for_singing wednesday.
 Proof. apply fdfs_any. Qed.
 
@@ -358,6 +384,9 @@ Proof. apply fdfs_any. Qed.
 
 (** これも同じように、最初の行は"私は命題 [fine_day_for_singing wednesday] に対する根拠を示し、その根拠をあとで参照するために [fdfs_wed] という名前を導入しようと思っている"と解釈できます。
     二行目は、Coqにその根拠をどのように組み立てるかを示しています。 *)
+
+(* 2014-02-01 #4 ここまで *)
+(* 2014-03-xx #5 ここから *)
 
 (* ##################################################### *)
 (* ** Proof Objects *)
@@ -557,7 +586,15 @@ Definition okd_before2 := forall d1 d2 d3,
 (** **** 練習問題: ★, optional (okd_before2_valid) *)
 Theorem okd_before2_valid : okd_before2.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  unfold okd_before2.
+  intros d1 d2 d3 H H0 H1.
+  (* d1がok_dayであるにはokな日の前日であることを示す *)
+  apply (okd_before d1 d2). 
+  apply (okd_before d2 d3).
+  apply H.
+  apply H1.
+  apply H0.
+Qed.
 (** [] *)
 
 (* But what should the corresponding proof object look like?
@@ -590,7 +627,69 @@ Definition okd_before2_valid' : okd_before2 :=
 (* Predict what Coq will print in response to this: *)
 (** 下記の結果としてCoqが出力するものを予測しなさい。 *)
 
+(*
+Inductive ok_day : day -> Prop :=
+  | okd_gd : forall d,
+      good_day d ->
+      ok_day d
+  | okd_before : forall d1 d2,
+      ok_day d2 ->
+      day_before d2 d1 ->
+      ok_day d1.
+
+Definition okd_before2_valid =
+  fun (d1 d2 d3 day) (H : ok_day d3) (H0 : day_before d2 d1) (H1 : day_before d3 d2) =>
+  okd_before d1 d2 (okd_before d2 d3) H H1 H0
+*)
+
 Print okd_before2_valid.
+
+
+(* ##################################################### *)
+(* パラメータとインデックス *)
+
+Inductive Foo (X : Type) :      Type -> Prop :=
+(*                 ^ Parameter  ^ Index *)
+  | Foo0 : Foo X nat.
+
+Inductive T0 : Type -> Type -> Prop :=
+(*             ^ Index ^ Index *)
+  | D0 : T0 nat nat.
+
+Inductive T1 (X : Type) : Type -> Prop :=
+  | D1 : T1 X nat.
+(* | D1 : T1 X X. *) 
+(* | D1 : T1 nat nat. *)
+
+Inductive T2 (X Y : Type) : Prop :=
+  | D2 : T2 X Y.
+
+(*
+
+T0_ind :
+  forall P : Type -> Type -> Prop,
+    P nat nat ->
+    forall T T1 : Type, T0 T T1 ->
+    P T T1.
+
+T1_ind :
+  forall (X : Type) (P : Type -> Prop),
+    P nat ->
+    forall T : Type, T1 X T ->
+    P T.
+
+T2_ind :
+  forall (X Y : Type) (P : Prop),
+    P ->
+    T2 X Y ->
+    P.
+
+*)
+
+Check T0_ind.
+Check T1_ind.
+Check T2_ind.
+
 
 (* ##################################################### *)
 (* ** Induction Principles for Inductively Defined Types *)
@@ -684,7 +783,21 @@ Proof.
 Theorem plus_one_r' : forall n:nat,
   n + 1 = S n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  (* induction n as [| S n]. *)
+  (* induction を使わずに名前を変える方法
+  intros n.
+  rename n into m.
+  generalize dependent m. *)
+  apply nat_ind.
+  Case "0".
+    simpl.
+    reflexivity.
+  Case "S".
+    intros n IHn.
+    simpl.
+    rewrite -> IHn.
+    reflexivity.
+Qed.
 (** [] *)
 
 (* The induction principles that Coq generates for other
@@ -742,6 +855,16 @@ Inductive rgb : Type :=
   | red : rgb
   | green : rgb
   | blue : rgb.
+
+(*
+rgb_ind : 
+  forall P : rgb -> Prop,
+    P red ->
+    P green ->
+    P blue ->
+    forall r : rgb, P r
+*)
+
 Check rgb_ind.
 (** [] *)
 
@@ -773,6 +896,20 @@ Inductive natlist1 : Type :=
 
 (* Now what will the induction principle look like? *)
 (** このとき、帰納法の原理はどのようになるでしょうか？ *)
+
+(*
+natlist1_ind :
+   forall P : natlist1 -> Prop,
+      P nnil1 ->
+      (forall (n : natlist), P n -> forall n0 : nat, P (nsnoc n n0)) ->
+      forall n : natlist1, P n
+
+8.4pl2では変数名はn, n0, .. という名前になる。
+forall (n : 再帰型), P n -> P nの1step後を作るコンストラクタ
+*)
+
+Check natlist1_ind.
+
 (** [] *)
 
 (* From these examples, we can extract this general rule:
@@ -820,8 +957,10 @@ Inductive natlist1 : Type :=
     [ExSet] の帰納的な定義を示しなさい。 *)
 
 Inductive ExSet : Type :=
-  (* FILL IN HERE *)
-.
+  | con1 : bool -> ExSet
+  | con2 : nat -> ExSet -> ExSet.
+
+Check ExSet_ind.
 
 (** [] *)
 
@@ -888,7 +1027,19 @@ Inductive ExSet : Type :=
 Inductive tree (X:Type) : Type :=
   | leaf : X -> tree X
   | node : tree X -> tree X -> tree X.
+
+(*
+
+tree :
+  forall (X : Type) (P : tree X -> Prop),
+    (forall (x : X), P (leaf x) ->
+    (forall t1 : tree X, P t1 -> forall t2 : P t2 -> P (node X t1 t2)) ->
+    forall t : tree X, P t
+
+*)
+
 Check tree_ind.
+
 (** [] *)
 
 (* **** Exercise: 1 star (mytype) *)
@@ -916,6 +1067,14 @@ Check tree_ind.
             forall m : mytype X, P m
 ]]
 *)
+
+Inductive mytype (X : Type) : Type :=
+  | constr1 : X -> mytype X
+  | constr2 : nat -> mytype X
+  | constr3 : mytype X -> nat -> mytype X
+.
+Check mytype_ind.
+
 (** [] *)
 
 (* **** Exercise: 1 star, optional (foo) *)
@@ -943,6 +1102,13 @@ Check tree_ind.
              forall f2 : foo X Y, P f2
 ]]
 *)
+
+Inductive foo (X Y : Type) : Type :=
+  | bar : X -> foo X Y
+  | baz : Y -> foo X Y
+  | quux : (nat -> foo X Y) -> foo X Y
+.
+Check foo_ind.
 (** [] *)
 
 (* **** Exercise: 1 star, optional (foo') *)
@@ -973,12 +1139,14 @@ Inductive foo' (X:Type) : Type :=
      foo'_ind :
         forall (X : Type) (P : foo' X -> Prop),
               (forall (l : list X) (f : foo' X),
-                    _______________________ ->
-                    _______________________   ) ->
-             ___________________________________________ ->
-             forall f : foo' X, ________________________
+                    P f ->
+                    P (C1 X l f)) ->
+              P (C2 X) ->
+             forall f : foo' X, P f
 ]]
 *)
+
+Check foo'_ind.
 
 (** [] *)
 
@@ -1099,6 +1267,14 @@ Inductive ev : nat -> Prop :=
   | ev_0 : ev O
   | ev_SS : forall n:nat, ev n -> ev (S (S n)).
 
+(*
+ev_ind : forall P (nat -> Prop),
+  P 0 ->
+  (forall n : nat, ev n -> P n -> P (S (S n))) ->
+  forall n : nat, P n
+*)
+Check ev_ind.
+
 (* This definition says that there are two ways to give
     evidence that a number [m] is even.  First, [0] is even, and
     [ev_0] is evidence for this.  Second, if [m = S (S n)] for some
@@ -1116,9 +1292,20 @@ Inductive ev : nat -> Prop :=
 Theorem four_ev' :
   ev 4.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  apply ev_SS.
+  apply ev_SS.
+  apply ev_0.
+Qed.
+
+Check ev_SS.
+Check ev_0.
+Print four_ev'.
+
 Definition four_ev : ev 4 :=
-  (* FILL IN HERE *) admit.
+  (* ev_SS _ (ev_SS _ ev_0) *)
+  ev_SS 2 (ev_SS 0 ev_0)
+  (* この辺の書き方は依存型がらみ *)
+.
 (** [] *)
 
 (* **** Exercise: 2 stars (ev_plus4) *)
@@ -1127,6 +1314,7 @@ Definition four_ev : ev 4 :=
     even, then so is [4+n]. *)
 (** [n] が偶数ならば [4+n] も偶数であることをタクティックによる証明と証明オブジェクトによる証明で示しなさい。 *)
 Definition ev_plus4 : forall n, ev n -> ev (4 + n) :=
+  
   (* FILL IN HERE *) admit.
 Theorem ev_plus4' : forall n,
   ev n -> ev (4 + n).
@@ -1218,6 +1406,25 @@ Proof.
 
 (* What happens if we try to [destruct] on [n] instead of [E]? *)
 (** [E] の代わりに [n] に対して [destruct] するとどうなるでしょうか? *)
+
+Theorem ev_minus2_n: forall n,
+  ev n -> ev (pred (pred n)).
+Proof.
+  intros n E.
+  destruct n as [| n'].
+  Case "n = 0".
+    simpl.
+    apply E.
+  Case "n = S n'".
+    simpl.
+    destruct n' as [| n''].
+      SCase "n' = 0".
+        simpl. apply ev_0.
+      SCase "n' = S n''".
+        simpl.
+        inversion E.
+        apply H0.
+Qed.
 
 (** [] *)
 (* [] *)
@@ -1384,7 +1591,12 @@ Proof.
 Theorem SSSSev_even : forall n,
   ev (S (S (S (S n)))) -> ev n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n E.
+  inversion E as [|n' E'].
+  inversion E' as [|n'' E''].
+  apply E''.
+Qed.
+(* [] *)
 
 (* The [inversion] tactic can also be used to derive goals by showing
     the absurdity of a hypothesis. *)
@@ -1424,7 +1636,13 @@ Proof.
 Theorem ev_ev_even : forall n m,
   ev (n+m) -> ev n -> ev m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n m Enm En.
+  generalize dependent Enm.
+  generalize dependent m.
+  induction En.
+    simpl. intros m Em. apply Em.
+    simpl. intros m ESSnm. inversion ESSnm. apply (IHEn m H0).
+Qed.
 (** [] *)
 
 (* **** Exercise: 3 stars, optional (ev_plus_plus) *)
@@ -1828,7 +2046,7 @@ Proof.
 
     - ブール値は、「計算の世界における値」です。 [bool] 型の式は全て、（自由変数を持っていない限り）必ず [true] か [false] のどちらかに簡約することができます。
 
-    - 命題は「論理の世界における型」です。これらは「証明可能（この型の式を書くことができる）」か、「証明不能（そのような式は存在しない）」かのいずれかです。従って「命題が [true] である」というような言い方は意味を持ちません。
+    - 命題は「論理の世界にいおける型」です。これらは「証明可能（この型の式を書くことができる）」か、「証明不能（そのような式は存在しない）」かのいずれかです。従って「命題が [true] である」というような言い方は意味を持ちません。
 
       我々は時折、命題に対してそれが "true" か "false" というようなことを言ってしまいがちですが、厳格に言えばこれは間違っています。命題は「証明可能かそうでないか」のどちらかです。 *)
 
@@ -2060,7 +2278,7 @@ Proof.
 [[
             index (S (length l')) l' = None.
 ]]
-          しかしこれは帰納法の仮定から直接導かれる。
+          しかしこれは仮定法の仮定から直接導かれる。
           [l'] の length となるような [n'] を選択すればよい。  [] *)
 
 (*  *** Induction Over an Inductively Defined Proposition *)
@@ -2147,6 +2365,9 @@ Proof.
              帰納法の仮定法より [n <= o'] である。
 
              従って[le_S] より [n <= o] である。  [] *)
+
+(* 2014-03-xx たぶんこのあたりまで *)
+(* 2014-04-19 たぶんこのあたりから *)
 
 (* ##################################################### *)
 (*  * Optional Material *)
@@ -2289,6 +2510,40 @@ Proof.
     同じスタイルになるよう書き直しなさい。このことは、それぞれの定理が
     帰納法で証明された命題に明確な定義を与え、この定義された命題から定理と
     証明を示しています。  *)
+
+Definition P_plus_assoc : nat -> nat -> nat -> Prop :=
+  fun n m p => n + (m + p) = (n + m) + p.
+
+Theorem plus_assoc'' : forall n m p : nat,
+  P_plus_assoc n m p.
+Proof.
+  unfold P_plus_assoc.
+  intros n m p.
+  induction n as [| n'].
+  Case "n = 0".
+    simpl.
+    reflexivity.
+  Case "n = S n'".
+    simpl.
+    rewrite -> IHn'.
+    reflexivity.
+Qed.
+
+Theorem plus_assoc''' : forall n m p : nat,
+  P_plus_assoc n m p.
+Proof.
+  unfold P_plus_assoc.
+  intros n.
+  Print nat_ind.
+  apply nat_ind with (n:=n).
+  intros.
+  simpl.
+  reflexivity.
+  intros.
+  simpl.
+Admitted.
+    
+
 (* FILL IN HERE *)
 (** [] *)
 
@@ -2315,15 +2570,19 @@ Proof.
     を定義しなさい。
  *)
 
-(*
-Fixpoint true_upto_n__true_everywhere
-(* FILL IN HERE *)
+Fixpoint true_upto_n__true_everywhere (n : nat) (f : nat -> Prop) :=
+  match n with
+  | 0 => forall m, f m
+  | S n' => f n -> true_upto_n__true_everywhere n' f
+  end.
 
 Example true_upto_n_example :
     (true_upto_n__true_everywhere 3 (fun n => even n))
   = (even 3 -> even 2 -> even 1 -> forall m : nat, even m).
 Proof. reflexivity.  Qed.
-*)
+
+(* ちゃんと復習する 2014-04-19 *)
+
 (** [] *)
 
 (* ##################################################### *)
@@ -2448,6 +2707,13 @@ Proof. reflexivity.  Qed.
              forall n : nat, ev n -> P n
 ]]
     このような理由で、Coqは実際には [ev] のために次のような帰納法の原理を生成します。: *)
+Print ev.
+
+Inductive ev' : nat -> Prop :=
+  | ev_0' : ev' 0
+  | ev_SS' : forall n : nat, ev' n -> ev' (S (S n)).
+
+Check ev'_ind. (* _indが自動的にできることの確認 *)
 
 Check ev_ind.
 (* ===>  ev_ind
@@ -2495,6 +2761,7 @@ Proof.
   apply ev_ind.
   Case "ev_0". unfold even. reflexivity.
   Case "ev_SS". intros n' E' IHE'. unfold even. apply IHE'.  Qed.
+(* apply IHE'のところがよくわからない 2014-04-19 *)
 
 (*  **** Exercise: 3 stars, optional (prop_ind) *)
 (** **** 練習問題: ★★★, optional (prop_ind) *)
@@ -2504,7 +2771,23 @@ Proof.
 (** 帰納的に定義された [list] と [MyProp] に対し、Coq がどのような帰納法の原理を
     生成するか、予想して書き出し、次の行を実行した結果と比較しなさい。 *)
 
+Print list.
+
+(*
+forall (X : Type) (P : list -> Prop),
+  P [] -> (forall (x : X) (l : list X), P l -> P (x :: l)) -> forall (l : list X), P l
+*)
+
 Check list_ind.
+
+Print MyProp.
+
+(*
+forall (n : nat) (P : nat -> Prop),
+  P 4 -> (forall (n : nat), MyProp n -> P n -> P (4 + n))
+途中
+*)
+
 Check MyProp_ind.
 (** [] *)
 
@@ -2519,7 +2802,18 @@ Theorem ev_MyProp' : forall n:nat,
   MyProp n -> ev n.
 Proof.
   apply MyProp_ind.
-  (* FILL IN HERE *) Admitted.
+  apply (ev_SS 2 (ev_SS 0 (ev_0))).
+  
+  intros n M1 ev_n.
+  apply ev_SS.
+  apply ev_SS.
+  apply ev_n.
+
+  SearchAbout MyProp.
+  intros n M1 ev_2n.
+  apply ev_minus2 in ev_2n.
+  exact ev_2n.
+Qed.
 (** [] *)
 
 (*  **** Exercise: 4 stars, optional (MyProp_pfobj) *)
@@ -2530,6 +2824,9 @@ Proof.
 (** もう一度 [MyProp_ev] と [ev_MyProp] を証明しなさい。ただし今度は、明確な
     証明オブジェクトを手作業で構築（上の [ev_plus4] でやったように）することで
     証明しなさい。 *)
+
+Print MyProp_ev.
+Print ev_MyProp.
 
 (* FILL IN HERE *)
 (** [] *)
@@ -2558,6 +2855,19 @@ Inductive p : (tree nat) -> nat -> Prop :=
    (* FILL IN HERE *)
 *)
 (** [] *)
+
+Print tree.
+
+Fixpoint leaves (t : tree nat) :=
+  match t with
+  | leaf _ => 1
+  | node t1 t2 => leaves t1 + leaves t2
+  end.
+
+Theorem p_correct : forall (t : tree nat) (n : nat),
+    p t n -> ble_nat (leaves t) n = true.
+Proof.
+Admitted.
 
 End P.
 
@@ -2609,6 +2919,17 @@ End P.
        forall l, pal l -> l = rev l.
 ]]
 *)
+
+Inductive pal { X : Type } : list X -> Prop :=
+  | pal0 : pal []
+  | pal1 : forall x:X, pal [x]
+  | pal2 : forall (x:X) (l : list X), pal l -> pal (x :: (snoc l x)).
+  (* | pal2 : forall (x:X) (l:list X), l = rev l -> pal (x :: (snoc l x)). *)
+
+Theorem pal_l_app : forall (X:Type) (l:list X),
+    pal (l ++ rev l).
+Proof.
+Admitted.
 
 (* FILL IN HERE *)
 (** [] *)
@@ -2698,6 +3019,34 @@ End P.
     - （これは少し難しいですので、任意とします）サブシーケンスという関係は推移的である、つまり、 [l1] が [l2] のサブシーケンスであり、 [l2] が [l3] のサブシーケンスであるなら、 [l1] は [l3] のサブシーケンスである、というような関係であることを証明しなさい。（ヒント：何について帰納法を適用するか、よくよく注意して下さい。）
 *)
 
+(*
+Inductive subseq : list nat -> list nat -> Prop :=
+  | s1 : forall l, subseq [] l
+  | s2 : forall x l1 l2, subseq l1 l2 -> subseq l1 (x::l2)
+  | s3 : forall x l1 l2, subseq l1 l2 -> subseq (x::l1) (x::l2).
+
+(* 反射律 *)
+Theorem subseq_refl : forall l,
+    subseq l l.
+Proof.
+Admitted.
+
+Theorem subseq_app : forall (X : Type) (l1 l2 l3 : list X),
+    subseq l1 l2 -> subseq l1 (l2 ++ l3).
+Proof.
+Admitted.
+
+Theorem subseq_trans : forall (X : Type) (l1 l2 l3 : list X),
+    subseq l1 l2 -> subseq l2 l3 -> subseq l1 l3.
+Proof.
+  intros X l1 l2 l3 H12 H23.
+  generalize dependent l2.
+  generalize dependent l1.
+  induction l3.
+  (* constructor. assumption. *)
+Admitted.
+*)
+
 (* FILL IN HERE *)
 (** [] *)
 
@@ -2720,8 +3069,8 @@ End P.
           (________________________________________________) ->
            ________________________________________________
 ]]
-
 *)
+
 (** 次のような、帰納的な定義をしたとします：
 [[
    Inductive foo (X : Set) (Y : Set) : Set :=
@@ -2739,8 +3088,24 @@ End P.
           (________________________________________________) ->
            ________________________________________________
 ]]
-
 *)
+
+(*
+
+foo_ind :
+  forall (X Y : Set) (P : foo X Y -> Prop),           (* インデックスとしてSetが必要 *)
+    (forall x : X, P (foo1 X Y x)) ->                 (* foo1にパラメータX Yがつく *)
+    (forall y : Y, P (foo2 X Y y)) ->                 (* foo2にパラメータX Yがつく *) 
+    (forall f1 : foo X Y, P f -> P (foo3 X Y f1)) ->  (* foo3にパラメータX Yがつく *)
+    forall f2 : foo X Y, P f2                         (* すべてのf : foo X YについてPが成立 *)
+*)
+
+Inductive foo'' (X : Set) (Y : Set) : Set :=
+  | foo1 : X -> foo'' X Y
+  | foo2 : Y -> foo'' X Y
+  | foo3 : foo'' X Y -> foo'' X Y.
+Check foo''_ind.
+
 (** [] *)
 
 (** **** 練習問題: ★★, optional (bar_ind_principle) *)
@@ -2780,6 +3145,14 @@ End P.
 ]]
 
 *)
+
+Inductive bar' : Set :=
+  | bar1 : nat -> bar'
+  | bar2 : bar' -> bar'
+  | bar3 : bool -> bar' -> bar'.
+
+Check bar'_ind.
+
 (** [] *)
 
 (*  **** Exercise: 2 stars, optional (no_longer_than_ind) *)
@@ -2834,6 +3207,27 @@ End P.
 ]]
 
 *)
+
+(*
+no_longer_than_ind :
+  forall (X : Set) (P : list X -> nat -> Prop),
+    (* nlt_nil  *) (forall n : nat, P [] n) ->
+    (* nlt_cons *) (forall (x : X) (l : list X) (n : nat),
+                     no_longer_than X l n -> P l n -> P (x :: l) (S n)) ->
+    (* nlt_succ *) (forall (l : list X) (n : nat),
+                     no_longer_than X l n -> P l n -> P l (S n)) ->
+    forall (l : list X) (n : nat), no_longer_than X l n -> P l n.
+*)
+
+Inductive no_longer_than (X : Set) : (list X) -> nat -> Prop :=
+  | nlt_nil  : forall n, no_longer_than X [] n
+  | nlt_cons : forall x l n, no_longer_than X l n ->
+                             no_longer_than X (x::l) (S n)
+  | nlt_succ : forall l n, no_longer_than X l n ->
+                           no_longer_than X l (S n).
+
+Check no_longer_than_ind.
+
 (** [] *)
 
 (*  **** Exercise: 2 stars, optional (R_provability) *)
@@ -2864,6 +3258,34 @@ End P.
     - [R 1 [1,2,1,0]]
     - [R 6 [3,2,1,0]]
 *)
+
+Inductive R : nat -> list nat -> Prop :=
+  | c1 : R 0 []
+  | c2 : forall n l, R n l -> R (S n) (n :: l)
+  | c3 : forall n l, R (S n) l -> R n l.
+
+Lemma Q1_OK : R 2 [1,0].
+Proof.
+  apply c2.
+  apply c2.
+  apply c1.
+Qed.
+
+Lemma Q2_OK : R 1 [1,2,1,0].
+Proof.
+  apply c3.
+  apply c2.
+  apply c3.
+  apply c3.
+  apply c2.
+  apply c2.
+  apply c2.
+  apply c1.
+Qed.
+
+Lemma Q3_OK : R 6 [3,2,1,0].
+Proof.
+Admitted.
 
 (** [] *)
 

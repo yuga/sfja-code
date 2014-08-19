@@ -23,7 +23,7 @@ Proof.
   intros n m. induction n as [| n'].
   Case "n = O". simpl. intros eq. destruct m as [| m'].
     SCase "m = O". reflexivity.
-    SCase "m = S m'". inversion eq.
+    SCase "m = S m'". (* simpl in eq. *) inversion eq.
   Case "n = S n'". intros eq. destruct m as [| m'].
     SCase "m = O". inversion eq.
     SCase "m = S m'".
@@ -102,7 +102,8 @@ Proof.
        are doing a case analysis on [n], we need a case
        analysis on [m] to keep the two "in sync." *)
     destruct m as [| m'].
-    SCase "m = O". inversion eq.  (* The 0 case is trivial *)
+    SCase "m = O". simpl in eq. discriminate eq.
+                 (* inversion eq. *) (* The 0 case is trivial *)
     SCase "m = S m'".
       (* At this point, since we are in the second
          branch of the [destruct m], the [m'] mentioned
@@ -115,10 +116,21 @@ Proof.
          instantiation is performed automatically by
          [apply]), then [IHn'] gives us exactly what we
          need to finish the proof. *)
+      inversion eq. apply IHn' in H0. rewrite -> H0. reflexivity.
+      (* applyは仮定を弱めてしまうので気をつけて使う。
+         ex: H0: A -> B
+             H1: A
+             このH1にH0をapplyすると
+             H2: B
+             となってしまい仮定Aを使うことが出来ない。
+             BはAからいつでも導けるのでもったいない。 *)
+      (*
       assert (n' = m') as H.
       SSCase "Proof of assertion". apply IHn'.
         inversion eq. reflexivity.
-      rewrite -> H. reflexivity.  Qed.
+      rewrite -> H. reflexivity.
+      *)
+      Qed.
 
 (** 帰納法によって証明しようとしていることが、限定的すぎないかに注意する必要があることを学びました。
     もし[n]と[m]の性質に関する証明を[n]に関する帰納法で行ないたい場合は、[m]を一般的なままにしておく必要があるかもしれません。
@@ -204,7 +216,18 @@ Theorem plus_n_n_injective_take2 : forall n m,
      n + n = m + m ->
      n = m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros m. induction m as [| m'].
+  Case "m = 0". simpl. intros n eq. destruct n as [| n'].
+    SCase "n = 0". reflexivity.
+    SCase "n = S n'". inversion eq.
+  Case "m = S m'". simpl. intros n eq. destruct n as [| n'].
+    SCase "n = 0". inversion eq.
+    SCase "n = S n'".
+      simpl in eq. inversion eq. rewrite <- plus_n_Sm in H0.
+      rewrite <- plus_n_Sm in H0. inversion H0. rewrite (IHm' _ H1).
+      reflexivity.
+Qed.
+(* []*)
 
 (** [l]に関する帰納法で示しなさい。 *)
 
@@ -212,8 +235,20 @@ Theorem index_after_last: forall (n : nat) (X : Type) (l : list X),
      length l = n ->
      index (S n) l = None.
 Proof.
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  intros n X l.
+  generalize dependent n.
+  induction l as [| x l'].
+  Case "l = nil". intros n eq. simpl. reflexivity.
+  Case "l = cons x l'".
+    destruct n as [| n'].
+    SCase "n = 0". intros eq. simpl in eq. inversion eq.
+    SCase "n = S n'".
+      intros eq.
+      inversion eq.
+      rewrite -> H0.
+      apply (IHl' n' H0).
+Qed.
+(* [] *)
 
 (** **** 練習問題: ★★★, optional (index_after_last_informal) *)
 (** [index_after_last]のCoqによる証明に対応する非形式的な証明を書きなさい。
@@ -233,8 +268,31 @@ Theorem length_snoc''' : forall (n : nat) (X : Type)
      length l = n ->
      length (snoc l v) = S n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros n X v l.
+  generalize dependent n.
+  induction l as [| x l'].
+  Case "l = nil".
+    intros n eq.
+    simpl.
+    rewrite <- eq.
+    simpl. reflexivity.
+  Case "l = x l'".
+    simpl.
+    destruct n as [| n'].
+    SCase "n = 0".
+      intros eq.
+      inversion eq.
+    SCase "n = S n'".
+      intros eq.
+      inversion eq.
+      rewrite -> (IHl' n' H0).
+      inversion eq.
+      reflexivity.
+Qed.
 (** [] *)
+
+(* (yuga) inversionの解説はPoly_J.vにある。帰納的構造を持つデータ型において
+   コンストラクタが単射であること、異なるコンストラクタから同じ値は生まれないことを利用している *)
 
 (** **** 練習問題: ★★★, optional (app_length_cons) *)
 (** [app_length]を使わずに[l1]に関する帰納法で示しなさい。 *)
@@ -244,15 +302,75 @@ Theorem app_length_cons : forall (X : Type) (l1 l2 : list X)
      length (l1 ++ (x :: l2)) = n ->
      S (length (l1 ++ l2)) = n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l1 l2 x n.
+  generalize dependent n.
+  induction l1 as [| x1 l1'].
+  Case "l1 = nil".
+    simpl. intros n eq. rewrite -> eq. reflexivity.
+  Case "l1 = x1 l1'".
+    simpl.
+    destruct n as [| n'].
+    SCase "n = 0". intros eq. inversion eq.
+    SCase "n = S n'". intros eq. inversion eq.
+      rewrite -> (IHl1' n' H0).
+      rewrite -> eq.
+      reflexivity.
+Qed.
+
 (** [] *)
 
 (** **** 練習問題: ★★★★, optional (app_length_twice) *)
-(** [app_length]を使わずに[l]に関する帰納法で示しなさい。 *)
+(** [app_length]を使わずに[l1]に関する帰納法で示しなさい。 *)
+
+Lemma app_length_cons_eq' : forall (X:Type) (x:X) (l:list X),
+      length (l ++ x :: l) = S (length (l ++ l)).
+Proof.
+  intros X x l.
+  induction l as [| x' l'].
+  Case "l = nil".
+    simpl.
+    reflexivity.
+  Case "l = x' l'".
+    simpl.       
+Admitted.
+
+Lemma app_length_cons_eq : forall (X:Type) (x:X) (l1 l2:list X),
+      length (l1 ++ x :: l2) = S (length (l1 ++ l2)).
+Proof.
+  intros X x l1 l2.
+  induction l1 as [| x1' l1'].
+  Case "l1 = nil".
+    simpl.
+    reflexivity.
+  Case "l1 = x1' l1'".
+    simpl.
+    rewrite -> IHl1'.
+    reflexivity.  
+Qed.
 
 Theorem app_length_twice : forall (X:Type) (n:nat) (l:list X),
      length l = n ->
      length (l ++ l) = n + n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X n l. generalize dependent n.
+  induction l as [| x l'].
+  Case "l = nil".
+    simpl.
+    intros n eq.
+    inversion eq. 
+    reflexivity.
+  Case "l = x l'".
+    intros n eq.
+    destruct n as [| n'].
+    SCase "n = 0".
+      inversion eq.
+    SCase "n = S n'".
+      inversion eq.
+      rewrite -> H0.
+      simpl.
+      rewrite <- plus_n_Sm.
+      rewrite -> app_length_cons_eq.
+      rewrite -> (IHl' n' H0).
+      reflexivity.
+Qed.
 (** [] *)
