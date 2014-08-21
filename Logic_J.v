@@ -1854,20 +1854,16 @@ Definition eq'_sym : forall (X:Type) (x y : X),
 
 Definition two_defs_of_eq_coincide_r : forall (X:Type) (x y : X),
   x = y -> x =' y :=
-    fun X x y eq =>
-      (fun H : x =' x -> y =' y -> x =' y => H (refl_equal' X x) (refl_equal' X y))
-      match eq in (y0 = y1) return (y0 =' x -> y1 =' y -> x =' y) with
-      | refl_equal x' =>
-          fun (eq0 : x' =' x) (eq1 : x' =' y) =>
-            (fun eq2 : x' =' x =>
-               eq'_ind
-               X
-               x
+  fun X x y eq =>
+    (fun H : x =' x -> y =' y -> x =' y => H (refl_equal' X x) (refl_equal' X y))
+    match eq in (x0 = y0) return (x0 =' x -> y0 =' y -> x =' y) with
+    | refl_equal x' =>
+        fun (eq0 : x' =' x) (eq1 : x' =' y) =>
+          (fun eq2 : x' =' x =>
+             eq'_ind X x
                (fun e : X => e =' y -> x =' y)
                (fun eq3 : x =' y =>
-                  eq'_ind 
-                  X
-                  y 
+                  eq'_ind X y
                   (fun e : X => e =' y)
                   (refl_equal' X y)
                   x
@@ -1875,12 +1871,32 @@ Definition two_defs_of_eq_coincide_r : forall (X:Type) (x y : X),
                )
                x'
                (eq'_sym X x' x  eq2)
-            )
-            eq0
-            eq1
+          )
+          eq0
+          eq1
       end.
 
-    (* fun X x y H => refl_equal' X x y. The expression "refl_equal' X x" of type "x =' x" *)
+Definition two_defs_of_eq_coincide_l : forall (X:Type) (x y : X),
+  x =' y -> x = y :=
+  fun X x y eq =>
+    (fun H : y = y -> x = y => H (refl_equal X y))
+    match eq in (_ =' y0) return (y0 = y -> x = y) with
+    | refl_equal' =>
+        (fun eq0 : x = y =>
+          eq_ind X
+            (fun (e0 e1 : X) => e0 = e1)
+            (fun e : X => refl_equal X e)
+            x y eq0)
+   end.
+
+Definition two_defs_of_eq_coincide' :forall (X:Type) (x y : X),
+  x = y <-> x =' y :=
+  fun X x y =>
+    conj
+      (x = y -> x =' y)
+      (x =' y -> x = y)
+      (two_defs_of_eq_coincide_r X x y)
+      (two_defs_of_eq_coincide_l X x y).
 
 Definition two_defs_of_eq_coincide' : forall (X:Type) (x y : X),
   x = y <-> x =' y :=
