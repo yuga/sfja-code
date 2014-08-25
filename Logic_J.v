@@ -1841,7 +1841,7 @@ Theorem two_defs_of_eq_coincide_r' : forall (X:Type) (x y : X),
   x = y -> x =' y.
 Proof.
   intros X x y eq.
-  inversion eq as [x' y' eq'].
+  inversion eq. (* as [x0 eq0 eq1]. *)
   apply refl_equal'.
 Qed.
 
@@ -1898,10 +1898,18 @@ Definition two_defs_of_eq_coincide' :forall (X:Type) (x y : X),
       (two_defs_of_eq_coincide_r X x y)
       (two_defs_of_eq_coincide_l X x y).
 
-Definition two_defs_of_eq_coincide' : forall (X:Type) (x y : X),
-  x = y <-> x =' y :=
-  fun X x y eq =>
-    
+Print eq_ind.
+
+(* ===>
+eq_ind =
+fun (X : Type) (P : X -> X -> Prop) (f : forall x : X, P x x)
+  (y y0 : X) (e : y = y0) =>
+match e in (y1 = y2) return (P y1 y2) with
+| refl_equal x => f x
+end
+     : forall (X : Type) (P : X -> X -> Prop),
+       (forall x : X, P x x) -> forall y y0 : X, y = y0 -> P y y0
+*)
 
 
 (*  The advantage of the second definition is that the induction
@@ -2175,17 +2183,69 @@ Proof.
   (* WORKED IN CLASS *)
   apply le_n.  Qed.
 
+Definition test_le1' :
+  3 <= 3 :=
+  le_n 3.
+
 Theorem test_le2 :
   3 <= 6.
 Proof.
   (* WORKED IN CLASS *)
   apply le_S. apply le_S. apply le_S. apply le_n.  Qed.
 
+Definition test_le2' :
+  3 <= 6 :=
+  le_S _ 5 (le_S _ 4 (le_S _ 3 (le_n 3))).
+
+Definition test_le2'' :
+  3 <= 6 :=
+  le_S 3 5 (le_S 3 4 (le_S 3 3 (le_n 3))).
+
 Theorem test_le3 :
   ~ (2 <= 1).
 Proof.
   (* WORKED IN CLASS *)
   intros H. inversion H. inversion H1.  Qed.
+
+Definition test_le3' :
+  ~ (2 <= 1) :=
+  fun H : 2 <= 1 =>
+    (fun H0 : 1 = 1 -> False => H0 eq_refl)
+    match H in (_ <= n) return (n = 1 -> False) with
+    | le_n =>
+        fun H1 : 2 = 1 =>
+          eq_ind 2 (fun e : nat => match e with
+                                   | 0 => False
+                                   | 1 => False
+                                   | 2 => True
+                                   | _ => False
+                                   end) I 1 H1
+    | le_S m H2 => (* H2 : 2 <= m *)
+        fun H1 : S m = 1 =>
+          (fun H3 : m = 0 =>
+            eq_ind 0 (fun e => 2 <= e -> False)
+            (fun H4 : 2 <= 0 =>
+              (fun H5 : 0 = 0 -> False => H5 eq_refl)
+              match H4 in (_ <= n0) return (n0 = 0 -> False) with
+              | le_n =>
+                  fun H7 : 2 = 0 =>
+                    eq_ind 2 (fun e : nat => match e with
+                                             | 0 => False
+                                             | S _ => True
+                                             end) I 0 H7
+              | le_S m0 H6 =>
+                  fun H7 : S m0 = 0 =>
+                    eq_ind (S m0) (fun e : nat => match e with
+                                                  | 0 => False
+                                                  | S _ => True
+                                                  end) I 0 H7
+              end) m (eq_sym H3))
+          (f_equal (fun e : nat => match e with   (* コンストラクタを削る *)
+                                   | 0 => m
+                                   | S e' => e'
+                                   end) H1)
+          H2
+    end.
 
 (*  The "strictly less than" relation [n < m] can now be defined
     in terms of [le]. *)
@@ -2215,7 +2275,15 @@ Inductive next_even (n:nat) : nat -> Prop :=
 (** 二つの自然数のペア同士の間に成り立つ帰納的な関係 [total_relation] を
     定義しなさい。 *)
 
-(* FILL IN HERE *)
+Inductive total_relation : nat -> nat -> Prop :=
+  | tot : forall n m : nat, total_relation n m.
+
+Inductive total_relation' (P : nat -> nat -> Prop) : nat -> nat -> Prop :=
+  | tot_l : forall n m : nat, (P n m) -> total_relation' P n m
+  | tot_r : forall n m : nat, (P m n) -> total_relation' P n m
+  | eto_e : forall n m : nat, n = m -> total_relation' P n m.
+(* これはない *)
+
 (** [] *)
 
 (*  **** Exercise: 2 stars (empty_relation) *)
@@ -2225,7 +2293,8 @@ Inductive next_even (n:nat) : nat -> Prop :=
 (** 自然数の間では決して成り立たない関係 [empty_relation] を帰納的に
     定義しなさい。 *)
 
-(* FILL IN HERE *)
+Inductive empty_relation : nat -> nat -> Prop :=
+.
 (** [] *)
 
 (*  **** Exercise: 3 stars, recommended (R_provability) *)
@@ -2256,7 +2325,6 @@ Inductive R : nat -> nat -> nat -> Prop :=
       would the set of provable propositions change?  Briefly (1
       sentence) explain your answer.
 
-(* FILL IN HERE *)
 []
 *)
 (**  - 次の命題のうち、この関係を満たすと証明できると言えるのはどれでしょうか。
@@ -2267,10 +2335,13 @@ Inductive R : nat -> nat -> nat -> Prop :=
 
     - この関係 [R] の定義からコンストラクタ [c4] を取り除くと、証明可能な命題の範囲はどのように変わるでしょうか？端的に（１文で）説明しなさい。
 
-
-(* FILL IN HERE *)
+- [R 1 1 2]
+- 変わらない
+- 変わらない
 []
 *)
+
+Example test_r := c3 1 0 1 (c2 0 0 0 c1).
 
 (*  **** Exercise: 3 stars, optional (R_fact) *)
 (** **** 練習問題: ★★★, optional (R_fact) *)
@@ -2287,6 +2358,9 @@ Inductive R : nat -> nat -> nat -> Prop :=
 (** [] *)
 
 End R.
+
+(* <- 2014-07-xx *)
+(* 2014-08-23 -> *)
 
 (*  **** Exercise: 3 stars, recommended (all_forallb) *)
 (** **** 練習問題: ★★★, recommended (all_forallb) *)
@@ -2325,6 +2399,11 @@ Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool :=
 
     関数 [forallb] の重要な性質が、あなたの仕様から洩れている、ということは
     ありませんか？ *)
+
+Theorem forallb_eq_all : forall (X:Type) (test:X -> bool) (l:list X),
+  forallb test l = true <-> all X (fun x => test x = true) l.
+Proof.
+Admitted.
 
 (* FILL IN HERE *)
 (** [] *)
