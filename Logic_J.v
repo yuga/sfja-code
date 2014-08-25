@@ -2354,6 +2354,18 @@ Example test_r := c3 1 0 1 (c2 0 0 0 c1).
     [n] や [o] についてはどうでしょうか？その逆は？
  *)
 
+Theorem fact_r : forall m n o : nat,
+  R m n o -> m + n = o.
+Proof.
+  intros m n o r.
+  induction r.
+  reflexivity.
+  simpl. rewrite -> IHr. reflexivity.
+  rewrite <- plus_n_Sm. rewrite -> IHr. reflexivity.
+  inversion IHr. rewrite <- plus_n_Sm in H0. inversion H0. reflexivity.
+  rewrite <- IHr. apply plus_comm.
+Qed.
+
 (* FILL IN HERE *)
 (** [] *)
 
