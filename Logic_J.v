@@ -2354,17 +2354,60 @@ Example test_r := c3 1 0 1 (c2 0 0 0 c1).
     [n] や [o] についてはどうでしょうか？その逆は？
  *)
 
+
 Theorem fact_r : forall m n o : nat,
-  R m n o -> m + n = o.
+  R m n o <-> m + n = o.
 Proof.
-  intros m n o r.
-  induction r.
-  reflexivity.
-  simpl. rewrite -> IHr. reflexivity.
-  rewrite <- plus_n_Sm. rewrite -> IHr. reflexivity.
-  inversion IHr. rewrite <- plus_n_Sm in H0. inversion H0. reflexivity.
-  rewrite <- IHr. apply plus_comm.
+  intros m n o.
+  split.
+  Case "right".
+    intros r.
+    induction r.
+    reflexivity.
+    simpl. rewrite -> IHr. reflexivity.
+    rewrite <- plus_n_Sm. rewrite -> IHr. reflexivity.
+    inversion IHr. rewrite <- plus_n_Sm in H0. inversion H0. reflexivity.
+    rewrite <- IHr. apply plus_comm.
+  Case "left".
+    generalize dependent n.
+    generalize dependent m.
+    induction o as [| o'].
+      induction n as [| n'].
+        intros H. rewrite plus_comm in H. simpl in H. rewrite -> H. apply c1.
+        intros H. rewrite <- plus_n_Sm in H. inversion H.
+
+        intros m n H.
+        destruct m.
+          simpl in H. rewrite -> H. apply c3. apply IHo'. reflexivity.
+          apply c2. apply IHo'. inversion H. reflexivity.
 Qed.
+
+(* 失敗
+
+Definition fact_r_r : forall m n o : nat,
+  m + n = o -> R m n o :=
+  fun m n o eq =>
+    (fun (m0 n0 o0 : nat)
+         (P : nat -> nat -> nat -> Prop)
+         (f : forall m1 n1 o1, P m1 n1 o1)
+         (f0 : forall m1 n1 o1, P m1 n1 o1 -> P m1 (S n1) (S o1))
+         (f1 : forall m1 n1 o1, P m1 n1 o1 -> P (S m1) n1 (S o1)) =>
+       (fix F m1 n1 o1 : P m1 n1 o1 :=
+          match (m1,n1,o1) with
+          | (0, 0, 0) => f m1 n1 o1
+          | (0, _, 0) => f m1 n1 o1
+          | (0, 0, _) => f m1 n1 o1
+          | (0, (S n2), (S o2)) => f0 0 n2 o2 (F 0 n2 o2)
+          | ((S m2), n2, (S o2)) => f1 m2 n2 o2 (F m2 n2 o2)
+          end)
+       m0 n0 o0)
+    m n o
+    (fun m0 n0 o0 : nat => c1)
+    c1
+    (fun (m0 n0 o0 : nat) r => c3 0 n0 o0 r)
+    (fun (m0 n0 o0 : nat) r => c2 m0 n0 (m0 + n0) r).
+
+*)
 
 (* FILL IN HERE *)
 (** [] *)
