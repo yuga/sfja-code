@@ -2277,12 +2277,15 @@ Inductive next_even (n:nat) : nat -> Prop :=
 
 Inductive total_relation : nat -> nat -> Prop :=
   | tot : forall n m : nat, total_relation n m.
+(* forall なので 入れ替わっても関係が成立する。自然数のω完備性により自動的に全順序になる *)
+(* テキトウいってます *)
 
+(* ある関係がtotal relationであることを定義するとしたらどうするか *)
 Inductive total_relation' (P : nat -> nat -> Prop) : nat -> nat -> Prop :=
   | tot_l : forall n m : nat, (P n m) -> total_relation' P n m
   | tot_r : forall n m : nat, (P m n) -> total_relation' P n m
   | eto_e : forall n m : nat, n = m -> total_relation' P n m.
-(* これはない *)
+(* これはない気がする *)
 
 (** [] *)
 
@@ -2355,12 +2358,12 @@ Example test_r := c3 1 0 1 (c2 0 0 0 c1).
  *)
 
 
-Theorem fact_r : forall m n o : nat,
+Theorem fact_r' : forall m n o : nat,
   R m n o <-> m + n = o.
 Proof.
   intros m n o.
   split.
-  Case "right".
+  Case "left".
     intros r.
     induction r.
     reflexivity.
@@ -2368,7 +2371,7 @@ Proof.
     rewrite <- plus_n_Sm. rewrite -> IHr. reflexivity.
     inversion IHr. rewrite <- plus_n_Sm in H0. inversion H0. reflexivity.
     rewrite <- IHr. apply plus_comm.
-  Case "left".
+  Case "right".
     generalize dependent n.
     generalize dependent m.
     induction o as [| o'].
@@ -2382,6 +2385,244 @@ Proof.
           apply c2. apply IHo'. inversion H. reflexivity.
 Qed.
 
+
+Theorem n_Sm_eq_0_False' : forall m n : nat,
+  m + n = 0 -> ~(m + S n = 0).
+Proof.
+  intros m n eq H.
+  rewrite <- plus_n_Sm in H.
+  rewrite -> eq in H.
+  inversion H.
+Qed.
+
+
+Definition n_Sm_eq_0_False : forall m n : nat,
+  m + n = 0 -> ~(m + S n = 0) :=
+  fun m n eq H =>
+    (fun H0 : 0 = 0 -> False => H0 eq_refl)
+    match H in (_ = y) return (y = 0 -> False) with
+    | eq_refl =>
+        fun H1 : m + S n = 0 =>
+          eq_ind
+            (S (m + n))        
+            (fun e : nat => match e with
+                            | 0 => False
+                            | S _ => True
+                            end)
+            I
+            0
+            (eq_ind_r (fun e : nat => e = 0) H1 (plus_n_Sm m n))
+    end.
+
+(*
+eq_ind   : forall (A : Type) (x : A) (P : A -> Prop), P x -> forall y : A, x = y -> P y
+
+A     := nat
+
+x     := S (m + n)
+P     := fun e : nat => match e with 0 => False | S _ => True end
+P x   := I
+y     := 0
+x = y := see below
+
+-------
+eq_ind_r : forall (A : Type) (x : A) (P : A -> Prop), P x -> forall y : A, y = x -> P y
+
+A     := nat
+x     := m + S n
+
+P     := fun e : nat => e = 0
+P x   := H1 : m + S n = 0
+y = x := plus_n_Sm m n : S (m + n) = m + S n
+
+y     := S (m + n)
+P y   := S (m + n) = 0 
+*)
+
+Theorem plus_Sm_n_eq_So__plus_m_n_eq_o' : forall m n o : nat,
+  S m + n = S o -> m + n = o.
+Proof.
+  intros m n o H.
+  rewrite -> plus_comm in H.
+  rewrite <- plus_n_Sm in H.
+  rewrite -> plus_comm in H.
+  inversion H.
+  reflexivity.
+Qed.
+
+Definition plus_Sm_n_eq_o__plus_S_m_n_eq_o : forall m n o : nat,
+  S m + n = o -> S (m + n) = o :=
+  fun (m n o : nat) (H : S m + n = o) =>
+    (fun H0 : n + S m = o =>
+       (fun H1 : S (n + m) = o =>
+          eq_ind (n + m) (fun e : nat => S e = o) H1 (m + n) (plus_comm n m)
+       )
+       (eq_ind_r (fun e : nat => e = o) H0 (plus_n_Sm n m))
+    )
+    (eq_ind (S m + n) (fun e : nat => e = o) H (n + S m) (plus_comm (S m) n)).
+
+Definition plus_Sm_n_eq_So__plus_m_n_eq_o : forall m n o : nat,
+  S m + n = S o -> m + n = o :=
+  fun (m n o : nat) (H : S m + n = S o) =>
+    (fun H0 : S (m + n) = S o =>
+       f_equal (fun e : nat => match e with
+                               | 0 => m
+                               | S e' => e'
+                               end) H0
+    )
+    (plus_Sm_n_eq_o__plus_S_m_n_eq_o m n (S o) H).
+
+(* *)
+Definition fact_r_r : forall m n o : nat,
+  m + n = o -> R m n o :=
+  fun m n o : nat =>
+    nat_ind
+    (* P   *)
+    (fun o0 : nat => forall m0 n0 : nat, m0 + n0 = o0 -> R m0 n0 o0)
+    (* P 0 *)
+    (fun m0 n0 : nat =>
+       nat_ind
+       (* P   *)
+       (fun n1 : nat => m0 + n1 = 0 -> R m0 n1 0)
+       (* P 0 *)
+       (fun H : m0 + 0 = 0 =>
+         (fun H0 : 0 + m0 = 0 => eq_ind_r (fun e => R e 0 0) c1 H0)
+           (eq_ind
+            (* x     *) (m0 + 0)
+            (* P     *) (fun e : nat => e = 0)
+            (* P x   *) H
+            (* y     *) (0 + m0)
+            (* x = y *) (plus_comm m0 0)
+           )
+       )
+       (* (forall n : nat, P n -> P (S n)) *) (* m0 + n1 = 0 *)
+       (fun (n1 : nat) (IHn : m0 + n1 = 0 -> R m0 n1 0) (H : m0 + S n1 = 0) =>
+         (fun H : S (m0 + n1) = 0 =>
+           match H in (_ = y) return (R m0 (S n1) 0) with
+           | eq_refl =>
+               False_ind'
+               (R m0 (S n1) 0)
+               (* (n_Sm_eq_0_False m n y H) *) (* <= m0 + n1 = 0 だけを取れないのでやめ *)
+               (eq_ind (S (m0 + n1))
+                       (fun e : nat => match e with
+                                       | 0 => False
+                                       | S _ => True
+                                       end)
+                       I 0 H)
+           end
+         )
+         (eq_ind_r (fun e : nat => e = 0) H (plus_n_Sm m0 n1))
+       )
+       (* forall n : nat *)
+       n0
+    )
+    (* forall n : nat, P n -> P (S n) *)
+    (fun (o0 : nat) (IHo : forall m0 n0 : nat, m0 + n0 = o0 -> R m0 n0 o0)
+         (m0 n0 : nat) (H : m0 + n0 = S o0) =>
+      match m0 return (m0 + n0 = S o0 -> R m0 n0 (S o0)) with
+      | 0 =>
+          fun H0 : 0 + n0 = S o0 =>
+            eq_ind_r (fun e : nat => R 0 e (S o0)) (c3 0 o0 o0 (IHo 0 o0 eq_refl)) H0
+      | S m1 =>
+          fun H0 : S m1 + n0 = S o0 =>
+            c2 m1 n0 o0 (IHo m1 n0 (plus_Sm_n_eq_So__plus_m_n_eq_o m1 n0 o0 H0))
+      end
+      H
+    )
+    o m n.
+
+Theorem plus_Sm_Sn_eq_o__plus_S_Sm_n_eq_o' : forall m n o,
+  S m + S n = o -> S (S m + n) = o.
+Proof.
+  intros m n o H.
+  rewrite <- (plus_n_Sm (S m) n) in H.
+  exact H.
+Qed.
+
+Definition plus_Sm_Sn_eq_o__plus_S_Sm_n_eq_o : forall m n o,
+  S m + S n = o -> S (S m + n) = o :=
+  fun (m n o : nat) (H : S m + S n = o) =>
+    (fun H0 : S (S m + n) = o => H0)
+    (eq_ind_r (fun e : nat => e = o) H (plus_n_Sm (S m) n)).
+
+Definition fact_r_l : forall m n o,
+  R m n o -> m + n = o :=
+  fun (m n o : nat) (r : R m n o) =>
+    R_ind
+    (* P : nat -> nat -> nat -> Prop *)
+    (fun m0 n0 o0 : nat => m0 + n0 = o0)
+    (* P 0 0 0 := 0 + 0 = 0 *)
+    eq_refl
+    (* forall m n o : nat, R m n o -> P m n o -> P (S m) n (S o) *)
+    (fun (m0 n0 o0 : nat) (r0 : R m0 n0 o0) (IHr : m0 + n0 = o0) =>
+       eq_ind_r (fun e : nat => S e = S o0) eq_refl IHr 
+    )
+    (* forall m n o : nat, R m n o -> P m n o -> P m (S n) (S o) *)
+    (fun (m0 n0 o0 : nat) (r0 : R m0 n0 o0) (IHr : m0 + n0 = o0) =>
+       eq_ind
+       (S (m0 + n0))
+       (fun e : nat => e = S o0)
+       (eq_ind_r (fun e : nat => S e = S o0) eq_refl IHr)
+       (m0 + S n0)
+       (plus_n_Sm m0 n0)
+    )
+    (* forall m n o : nat, R (S m) (S n) (S (S o)) -> P (S m) (S n) (S (S o)) -> P m n o *)
+    (fun (m0 n0 o0 : nat) (r0 : R (S m0) (S n0) (S (S o0))) (IHr : (S m0) + (S n0) = (S (S o0))) =>
+       (fun H0 : S (S m0 + n0) = S (S o0) =>
+          (f_equal (fun e : nat => match e with 0 => 0 | S e' => e' end)
+            ((fun H1 : S (m0 + n0) = S o0 => eq_ind_r (fun e : nat => e = S o0) eq_refl H1)
+             (plus_Sm_n_eq_o__plus_S_m_n_eq_o
+              m0 n0 (S o0)
+              (f_equal (fun e : nat => match e with 0 => 0 | S e' => e' end) H0)
+             )
+            )
+          )
+       )
+       ((fun H0 : S (S m0 + n0) = S (S o0) => H0)
+        (eq_ind_r (fun e : nat => e = S (S o0)) IHr (plus_n_Sm (S m0) n0))
+       )
+    )
+    (* forall m n o : nat, R m n o -> P m n o -> P n m o *)
+    (fun (m0 n0 o0 : nat) (r0 : R m0 n0 o0) (IHr : m0 + n0 = o0) => 
+       eq_ind (m0 + n0) (fun e : nat => n0 + m0 = e) (plus_comm n0 m0) o0 IHr
+    )
+    (* forall n n0 n1 : nat, R n n0 n1 *)
+    m n o r.
+
+Definition fact_r : forall m n o : nat,
+  R m n o <-> m + n = o :=
+  fun (m n o : nat) =>
+    conj
+    (R m n o -> m + n = o)
+    (m + n = o -> R m n o)
+    (fact_r_l m n o)
+    (fact_r_r m n o).
+
+Definition sample_increase_S : forall m n : nat,
+  m = n -> S m = S n :=
+  fun (m n : nat) (H : m = n) =>
+    eq_ind_r (fun e : nat => S e = S n) eq_refl H
+   : S m = S n.
+
+Definition sample_decrease_S : forall m n : nat,
+  S m = S n -> m = n :=
+  fun (m n : nat) (H : S m = S n) =>
+    f_equal (fun e : nat => match e with 0 => 0 | S e' => e' end) H
+   : m = n.
+
+Definition sample_rewrite_l : forall m n o : nat,
+  m + S n = o -> S (m + n) = o :=
+  fun (m n o : nat) (H : m + S n = o) =>
+    eq_ind (m + S n) (fun e : nat => e = o) H (S (m + n)) (eq_sym (plus_n_Sm m n))
+   : S (m + n) = o.
+
+Definition sample_rewrite_r : forall m n o : nat,
+  S (m + n) = o -> m + S n = o :=
+  fun (m n o : nat) (H : S (m + n) = o) =>
+    eq_ind (S (m + n)) (fun e : nat => e = o) H (m + S n) (plus_n_Sm m n)
+   : m + S n = o.
+
+(* [] *)
 (* 失敗
 
 Definition fact_r_r : forall m n o : nat,
@@ -2428,7 +2669,8 @@ End R.
  *)
 
 Inductive all (X : Type) (P : X -> Prop) : list X -> Prop :=
-  (* FILL IN HERE *)
+  | allnil : all X P []
+  | allcons : forall x xs, P x -> all X P xs -> all X P (x :: xs)
 .
 
 (*  Recall the function [forallb], from the exercise
@@ -2823,6 +3065,8 @@ Proof.  intros X l1. induction l1.
   (* FILL IN HERE *) Admitted.
 (** [] *)
 
+
+
 (* ##################################################### *)
 (*  * Optional Material *)
 (** * 選択課題 *)
@@ -2835,7 +3079,7 @@ Proof.  intros X l1. induction l1.
     good illustration of Coq's way of generating simplified induction
     principles for [Inductive]ly defined propositions, which we
     discussed in the last chapter.  You try first: *)
-(** 論理積（連言）や論理和（連言）に関する帰納法の原理は、帰納的に定義された
+(** 論理積（連言）や論理和（選言）に関する帰納法の原理は、帰納的に定義された
     命題に対して簡約された帰納法の原理を Coq が生成する方法をとてもよく示しています。
     これについては最後の章でお話しします。とりあえずこれに挑戦してみてください。
  *)
@@ -3121,6 +3365,9 @@ Proof.
     apply ev_SS.
     apply IHn'.  unfold even.  unfold even in H.  simpl in H. apply H.
 Qed.
+
+(* <- 2014-08-23 *)
+(* 2014-09-26 -> *)
 
 (* ######################################################### *)
 (*  ** The Coq Trusted Computing Base *)
